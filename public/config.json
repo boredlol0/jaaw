@@ -1,3 +1,6 @@
 {
-    "apiServers": []
+    "apiServers": [
+        "https://jaaw.onrender.com",
+        "https://prod--jaawapi--gxrqhm4yrdpk.code.run"
+    ]
 }

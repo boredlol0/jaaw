@@ -2,7 +2,7 @@ export const BASE_URL = "https://academia.srmist.edu.in/";
 export const LOGIN_URL = "https://academia.srmist.edu.in/accounts/signin.ac";
 
 export const DEFAULT_HEADERS = {
-  "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/[IP_ADDRESS] Safari/537.36",
+  "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
   origin: BASE_URL,
   referer: BASE_URL,
 };
@@ -21,5 +21,3 @@ export const URLS = {
   calendarOdd: academicYearUrl("ODD"),
   calendarEven: academicYearUrl("EVEN"),
 } as const;
-
-export const APP_VERSION = "0.0.5";
