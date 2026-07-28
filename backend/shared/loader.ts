@@ -95,7 +95,7 @@ export async function loadAttendanceHtml(body: { username?: string; password?: s
   const client = new PortalClient(creds.username, creds.password, creds.cookies);
   const didFallback = { value: false };
 
-  authenticateIfNeeded(client, creds, authTime);
+  await authenticateIfNeeded(client, creds, authTime);
 
   const t0 = performance.now();
   let attendanceHtml = await client.fetchAttendance();
@@ -130,7 +130,7 @@ export async function loadLoginData(body: { username?: string; password?: string
   const didFallback = { value: false };
   const authTime = { value: 0 };
 
-  authenticateIfNeeded(client, creds, authTime);
+  await authenticateIfNeeded(client, creds, authTime);
 
   const responseTimes: Record<string, number> = {};
 
@@ -210,7 +210,7 @@ export async function loadCalendarData(body: { username?: string; password?: str
   const didFallback = { value: false };
   const authTime = { value: 0 };
 
-  authenticateIfNeeded(client, creds, authTime);
+  await authenticateIfNeeded(client, creds, authTime);
 
   const t0 = performance.now();
   const calendar = await loadCalendarForClient(client, creds, creds.date, didFallback, authTime);

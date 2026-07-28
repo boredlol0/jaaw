@@ -11,6 +11,7 @@ export async function errorHandlerPlugin(app: FastifyInstance) {
       return reply.code(503).send({ detail: "Academia server is unreachable. Please try again later." });
     }
 
-    return reply.code(401).send({ detail: "Invalid Credentials" });
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return reply.code(500).send({ detail: message });
   });
 }
