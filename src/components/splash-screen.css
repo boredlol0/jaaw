@@ -1,0 +1,138 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@400;500;600;700&display=swap');
+
+.jaaw-splash {
+  --bg: #090a0c;
+  --ink: #f3f0e9;
+  --muted: #7c7e84;
+  --line: rgba(255, 255, 255, .09);
+  --accent: #efb348;
+
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Manrope, system-ui, sans-serif;
+  overflow: hidden;
+}
+
+.jaaw-splash-grid {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  opacity: 0;
+}
+
+.jaaw-splash-glow {
+  position: fixed;
+  width: 70vw;
+  height: 70vw;
+  max-width: 900px;
+  max-height: 900px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(70, 87, 225, .12), rgba(70, 87, 225, .035) 35%, transparent 68%);
+  filter: blur(10px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.jaaw-splash-noise {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: .035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.jaaw-splash-stage {
+  height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  position: relative;
+}
+
+.jaaw-splash-center {
+  width: min(1000px, 100%);
+  text-align: center;
+  position: relative;
+  transform: translateY(-1vh);
+}
+
+.jaaw-splash-brand-stage {
+  position: relative;
+  height: clamp(100px, 14vw, 175px);
+  display: grid;
+  place-items: center;
+}
+
+.jaaw-splash-jaaw {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  font: 500 clamp(76px, 12vw, 158px)/.85 "DM Mono", monospace;
+  letter-spacing: -.14em;
+  white-space: nowrap;
+}
+
+.jaaw-splash-jaaw .letter {
+  display: inline-block;
+  transform-origin: 50% 70%;
+}
+
+.jaaw-splash-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-left: 20px;
+  transform: translateY(-.65em) scale(0);
+  box-shadow: 0 0 0 0 rgba(239, 179, 72, .25);
+}
+
+.jaaw-splash-skip {
+  position: fixed;
+  right: 25px;
+  top: 22px;
+  border: 0;
+  background: none;
+  color: #ffffff42;
+  font: 400 9px "DM Mono", monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  opacity: 0;
+  transition: color .2s;
+  animation: jaaw-splash-fade-in .6s .6s forwards;
+}
+
+.jaaw-splash-skip:hover {
+  color: var(--ink);
+}
+
+@keyframes jaaw-splash-fade-in {
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jaaw-splash-grid,
+  .jaaw-splash-skip {
+    opacity: 1;
+  }
+
+  .jaaw-splash-hello-inner {
+    transform: none;
+  }
+
+  .jaaw-splash-dot {
+    transform: translateY(-.65em);
+  }
+}

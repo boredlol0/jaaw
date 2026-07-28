@@ -1,0 +1,159 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Manrope:wght@400;500;600;700&display=swap');
+
+.jaaw-landing {
+  --bg: #f4f2ed;
+  --ink: #171715;
+  --muted: #77736b;
+  --line: rgba(23, 23, 21, .14);
+}
+
+.jaaw-landing::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .22;
+  background-image:
+    linear-gradient(rgba(0, 0, 0, .022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, .022) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(circle at center, black, transparent 76%);
+}
+
+.jaaw-landing .noise {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.8'/%3E%3C/svg%3E");
+}
+
+.jaaw-landing .jaaw-brand span {
+  display: inline-block;
+  transform-origin: 50% 70%;
+}
+
+.jaaw-landing .word {
+  display: inline-flex;
+  align-items: baseline;
+  overflow: hidden;
+}
+
+.jaaw-landing .initial {
+  font-weight: 500;
+  display: inline-block;
+}
+
+.jaaw-landing .rest {
+  display: inline-block;
+  font-weight: 300;
+  max-width: 0;
+  opacity: 0;
+  transform: translateX(-12px);
+  overflow: hidden;
+}
+
+.jaaw-landing .login {
+  appearance: none;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  height: 50px;
+  min-width: 132px;
+  border-radius: 999px;
+  font: 500 14px/1 "DM Mono", monospace;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: color .35s ease, transform .25s ease;
+}
+
+.jaaw-landing .login::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  transform: translateY(102%);
+  transition: transform .35s cubic-bezier(.2, .8, .2, 1);
+  border-radius: inherit;
+}
+
+.jaaw-landing .login:hover {
+  color: var(--bg);
+  transform: translateY(-2px);
+}
+
+.jaaw-landing .login:hover::before {
+  transform: translateY(0);
+}
+
+.jaaw-landing .login span {
+  position: relative;
+  z-index: 1;
+}
+
+.jaaw-landing .login .arrow {
+  display: inline-block;
+  transition: transform .25s ease;
+}
+
+.jaaw-landing .login:hover .arrow {
+  transform: translateX(4px);
+}
+
+.jaaw-landing .corner {
+  position: fixed;
+  font: 400 10px/1 "DM Mono", monospace;
+  color: rgba(23, 23, 21, .38);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  z-index: 2;
+}
+
+.jaaw-landing .tl {
+  top: 22px;
+  left: 24px;
+}
+
+.jaaw-landing .br {
+  bottom: 22px;
+  right: 24px;
+}
+
+.jaaw-landing .cursor {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink);
+  margin-left: 9px;
+  transform: translateY(-.2em);
+}
+
+@media (max-width: 620px) {
+  .jaaw-landing .jaaw-expanded {
+    gap: 8px;
+    font-size: clamp(14px, 4.2vw, 22px);
+  }
+
+  .jaaw-landing .corner {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jaaw-landing .jaaw-brand {
+    display: none;
+  }
+
+  .jaaw-landing .jaaw-expanded {
+    visibility: visible;
+  }
+
+  .jaaw-landing .rest {
+    max-width: 10em;
+    opacity: 1;
+    transform: none;
+  }
+
+  .jaaw-landing .support {
+    opacity: 1;
+    transform: none;
+  }
+}

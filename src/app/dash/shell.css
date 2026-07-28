@@ -1,0 +1,314 @@
+@keyframes dash-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dash-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: dash-spin 0.7s linear infinite;
+}
+
+.cx-dashboard-shell {
+  --cx-bg: #0a0a0b;
+  --cx-bg-2: #131316;
+  --cx-fg: #f4f2ea;
+  --cx-muted: #8d8d95;
+  --cx-accent: #deab59;
+  --cx-line: rgba(244, 242, 234, 0.09);
+  --cx-amber-bg: #e7a63f;
+  --cx-amber-fg: #241203;
+
+  background: var(--cx-bg);
+  color: var(--cx-fg);
+}
+
+.cx-sidebar-motion {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 20;
+  overflow: hidden;
+}
+
+.cx-sidebar.sidebar {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--cx-bg-2) !important;
+  border-right: 1px solid var(--cx-line) !important;
+  box-shadow: none !important;
+  display: flex;
+  flex-direction: column;
+  padding: 26px 0 22px;
+  overflow: hidden;
+}
+
+.cx-sidebar.sidebar::before,
+.cx-sidebar.sidebar::after {
+  display: none !important;
+}
+
+.cx-sidebar-brand.brand {
+  width: 100%;
+  height: 46px;
+  margin: 0 0 44px;
+  display: flex;
+  align-items: center;
+  padding-left: 14px;
+  white-space: nowrap;
+  position: relative;
+  user-select: none;
+}
+
+.cx-sidebar-brand .wordmark {
+  font: 500 22px "DM Mono", monospace;
+  letter-spacing: -0.13em;
+  color: var(--cx-fg);
+  line-height: 1;
+}
+
+.cx-sidebar-brand .tagline {
+  font: 300 9px "DM Mono", monospace;
+  color: var(--cx-muted);
+  margin-left: 14px;
+  line-height: 1.35;
+}
+
+.cx-logo-short,
+.cx-logo-full {
+  position: absolute;
+  top: 0;
+  white-space: nowrap;
+  transition:
+    opacity 180ms ease,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    left 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.cx-logo-short {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.cx-logo-full {
+  left: 56px;
+  opacity: 0;
+  transform: translateX(-8px);
+}
+
+.cx-sidebar-brand .wordmark .jl-letter {
+  display: inline-block;
+}
+
+.cx-sidebar-nav.side-nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin: 0;
+  padding: 0 18px;
+}
+
+.cx-sidebar-link.nav-icon {
+  position: relative;
+  width: 52px;
+  height: 48px;
+  min-height: 0;
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--cx-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 14px;
+  outline-offset: 3px;
+  opacity: 1;
+  padding: 0 16px;
+  overflow: hidden;
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    transform 180ms ease,
+    width 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.cx-sidebar-link.nav-icon::before {
+  content: none;
+}
+
+.cx-sidebar-link.nav-icon::after {
+  content: none;
+}
+
+.cx-sidebar-link.nav-icon svg {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+}
+
+.cx-sidebar-link-label {
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  opacity: 0;
+  text-transform: uppercase;
+  transform: translateX(-6px);
+  transition:
+    opacity 170ms ease,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  white-space: nowrap;
+  color: var(--cx-muted);
+}
+
+.cx-sidebar-link.nav-icon:hover {
+  color: var(--cx-fg);
+  background: rgba(244, 242, 234, 0.05);
+}
+
+.cx-sidebar-link.nav-icon:hover .cx-sidebar-link-label {
+  color: var(--cx-fg);
+}
+
+.cx-sidebar-link.nav-icon.is-active .cx-sidebar-link-label {
+  color: var(--cx-bg);
+}
+
+.cx-sidebar-link.nav-icon.is-active {
+  color: var(--cx-bg);
+  background: var(--cx-accent);
+  box-shadow: none;
+}
+
+.cx-sidebar-link.nav-icon.is-active::before {
+  content: "";
+  position: absolute;
+  left: -14px;
+  top: 50%;
+  display: block !important;
+  width: 4px;
+  height: 22px;
+  border-radius: 4px;
+  background: var(--cx-accent);
+  box-shadow: none;
+  opacity: 1;
+  transform: translateY(-50%);
+}
+
+.cx-sidebar-profile {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 22px;
+}
+
+.cx-sidebar-avatar.avatar {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border: 2px solid var(--cx-bg-2);
+  border-radius: 50%;
+  background: var(--cx-amber-bg);
+  box-shadow: 0 0 0 2px var(--cx-accent);
+  color: var(--cx-amber-fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Unbounded", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 1;
+}
+
+.cx-sidebar-profile-text {
+  min-width: 0;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition:
+    opacity 170ms ease,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.cx-sidebar-profile-text p,
+.cx-sidebar-profile-text span {
+  display: block;
+  overflow: hidden;
+  margin: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cx-sidebar-profile-text p {
+  max-width: 190px;
+  color: var(--cx-fg);
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.cx-sidebar-profile-text span {
+  max-width: 190px;
+  margin-top: 4px;
+  color: var(--cx-muted);
+  font-family: "Space Mono", monospace;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+@media (min-width: 761px) {
+  .cx-sidebar-motion:hover .cx-sidebar-link.nav-icon,
+  .cx-sidebar-motion:focus-within .cx-sidebar-link.nav-icon {
+    width: 264px;
+  }
+
+  .cx-sidebar-motion:hover .cx-sidebar-link-label,
+  .cx-sidebar-motion:focus-within .cx-sidebar-link-label,
+  .cx-sidebar-motion:hover .cx-sidebar-profile-text,
+  .cx-sidebar-motion:focus-within .cx-sidebar-profile-text,
+  .cx-sidebar-motion:hover .cx-logo-full,
+  .cx-sidebar-motion:focus-within .cx-logo-full {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .cx-sidebar-motion:hover .cx-logo-short,
+  .cx-sidebar-motion:focus-within .cx-logo-short {
+    left: 14px;
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 760px) {
+  .cx-sidebar-motion {
+    width: 70px;
+  }
+
+  .cx-sidebar-nav.side-nav {
+    padding: 0 9px;
+  }
+
+  .cx-sidebar-link.nav-icon {
+    width: 52px;
+    height: 48px;
+  }
+
+  .cx-sidebar-profile {
+    padding: 0 13px;
+  }
+}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none"><metadata><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dc="http://purl.org/dc/elements/1.1/"><rdf:Description><dc:creator>RealFaviconGenerator</dc:creator><dc:source>https://realfavicongenerator.net</dc:source></rdf:Description></rdf:RDF></metadata><g clip-path="url(#clip0_1_28)">
+<rect width="512" height="512" rx="96" fill="#171715"></rect>
+<path d="M264.078 98.4C256.345 98.4 249.678 95.7333 244.078 90.4C238.745 85.0667 236.078 78.6667 236.078 71.2C236.078 63.4667 238.745 57.0666 244.078 52C249.678 46.6667 256.345 44 264.078 44C272.078 44 278.745 46.6667 284.078 52C289.411 57.0666 292.078 63.4667 292.078 71.2C292.078 78.6667 289.411 85.0667 284.078 90.4C278.745 95.7333 272.078 98.4 264.078 98.4ZM160.478 420V391.2H239.678C246.345 391.2 249.678 387.733 249.678 380.8V172.4C249.678 165.733 246.345 162.4 239.678 162.4H191.678V133.6H247.678C271.411 133.6 283.278 145.467 283.278 169.2V384.4C283.278 408.133 271.411 420 247.678 420H160.478Z" fill="#F3F0E9"></path>
+</g><defs>
+<clipPath id="clip0_1_28">
+<rect width="512" height="512" rx="96" fill="white"></rect>
+</clipPath>
+</defs></svg>
