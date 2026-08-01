@@ -145,6 +145,13 @@ export function needToAttend(conducted: number, absent: number): number {
   return Math.max(0, Math.ceil(3 * conducted - 4 * attended));
 }
 
+/** Signed attendance margin: >0 = classes you can skip and stay >= 75%, <0 = classes you must attend to reach 75% */
+export function attendanceMargin(conducted: number, absent: number): number {
+  const skip = canSkip(conducted, absent);
+  if (skip > 0) return skip;
+  return -needToAttend(conducted, absent);
+}
+
 /** Attendance color class */
 export function attColor(pct: number): string {
   if (pct >= 85) return "safe";

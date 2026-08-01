@@ -21,6 +21,7 @@ import {
 } from "./api";
 import { loadSession, saveSession, updateDashData, clearSession } from "./storage";
 import type { StoredDashData, StoredSession } from "./storage";
+import { processLaunchUpdates } from "./updates";
 
 const QK = {
   dashboard: (username: string) => ["dashboard", username] as const,
@@ -84,6 +85,7 @@ export function useLoginMutation() {
           courses: data.courses,
           calendar: data.calendar,
           cachedAt: Date.now(),
+          updatesSeeded: true,
         },
       });
     },
@@ -264,7 +266,7 @@ export function useRefreshMutation(onSetDash?: (dash: StoredDashData) => void) {
         calendar: data.calendar,
         cachedAt: Date.now(),
       };
-      updateDashData(newDash);
+      processLaunchUpdates(newDash);
       onSetDash?.(newDash);
       queryClient.setQueryData(QK.dashboard(username), newDash);
       queryClient.setQueryData(QK.attendance(username), data.attendance);

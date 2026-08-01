@@ -62,6 +62,7 @@ export interface StoredDashData {
   courses: unknown[];
   calendar: unknown;
   cachedAt: number;
+  updatesSeeded?: boolean;
 }
 
 export interface StoredAll {
@@ -97,6 +98,16 @@ export function updateDashData(dash: StoredDashData): void {
   const existing = loadSession();
   if (!existing) return;
   saveSession({ ...existing, dash });
+}
+
+/** A single persisted section of the dash. */
+export type DashSection = "profile" | "attendance" | "marks" | "schedule" | "courses" | "calendar";
+
+/** Persist one section of the dash, preserving the rest. */
+export function updateDashSection(section: DashSection, data: unknown): void {
+  const existing = loadSession();
+  if (!existing?.dash) return;
+  saveSession({ ...existing, dash: { ...existing.dash, [section]: data } });
 }
 
 /** Clear the session (logout). */

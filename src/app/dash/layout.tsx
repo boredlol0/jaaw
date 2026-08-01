@@ -17,6 +17,7 @@ import { loadSession, type StoredDashData } from "@/lib/storage";
 import { SplashScreenVFX as SplashScreen } from "@/components/SplashScreenVFX";
 import { MobileNav } from "@/components/dashboard/mobile-nav";
 import "@/components/dashboard/css/mobile-nav.css";
+import { UpdatesModal } from "@/components/dashboard/updates-modal";
 import { useRefreshMutation } from "@/lib/queries";
 
 type Tab = "home" | "attendance" | "timetable" | "marks" | "calendar" | "profile";
@@ -283,6 +284,8 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
           {children}
         </div>
       </motion.div>
+
+      <UpdatesModal />
     </motion.div>
   );
 }

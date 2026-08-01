@@ -95,12 +95,12 @@ export function HomeTab({
         { opacity: 1, y: 0, duration: 0.5 },
         "-=0.3"
       );
-      tl.fromTo(
-        ".cx-home-today .cx-tt-row, .cx-home-today .cx-tt-break",
-        { opacity: 0, y: 14 },
-        { opacity: 1, y: 0, duration: 0.5, stagger: 0.05 },
-        "-=0.3"
-      );
+      // tl.fromTo(
+      //   ".cx-home-today .cx-tt-row, .cx-home-today .cx-tt-break",
+      //   { opacity: 0, y: 14 },
+      //   { opacity: 1, y: 0, duration: 0.5, stagger: 0.05 },
+      //   "-=0.3"
+      // );
     }, rootRef);
     return () => ctx.revert();
   }, []);

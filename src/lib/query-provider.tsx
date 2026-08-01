@@ -1,7 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryCache } from "@tanstack/react-query";
+import { updateDashSection, type DashSection } from "@/lib/storage";
+
+const DASH_SECTIONS = new Set<string>([
+  "profile",
+  "attendance",
+  "marks",
+  "schedule",
+  "courses",
+  "calendar",
+]);
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -15,6 +25,14 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
             refetchOnWindowFocus: false,
           },
         },
+        queryCache: new QueryCache({
+          onSuccess: (_data, query) => {
+            const section = query.queryKey[0];
+            if (typeof section === "string" && DASH_SECTIONS.has(section)) {
+              updateDashSection(section as DashSection, query.state.data);
+            }
+          },
+        }),
       })
   );
 

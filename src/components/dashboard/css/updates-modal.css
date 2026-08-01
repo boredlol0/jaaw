@@ -1,0 +1,30 @@
+.cx-updates-card {
+  --cx-bg-2: #131316;
+  --cx-fg: #f4f2ea;
+  --cx-muted: #8d8d95;
+  --cx-accent: #ffffff;
+  --cx-line: rgba(244, 242, 234, 0.09);
+  --cx-green-fg: #7cc98f;
+  --cx-brick-fg: #f08a8a;
+}
+
+.cx-updates-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.cx-updates-list::-webkit-scrollbar-thumb {
+  background: rgba(244, 242, 234, 0.14);
+  border-radius: 999px;
+}
+
+.cx-upd-change[data-dir="down"] .cx-upd-new {
+  color: var(--cx-brick-fg);
+}
+
+.cx-upd-change[data-dir="up"] .cx-upd-new {
+  color: var(--cx-green-fg);
+}
+
+.cx-upd-change[data-dir="flat"] .cx-upd-new {
+  color: var(--cx-accent);
+}

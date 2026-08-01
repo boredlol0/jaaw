@@ -2,19 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import type { AttendanceRecord } from "@/lib/api";
-import { canSkip, isFinishedSemester, needToAttend } from "./utils";
+import { attendanceMargin, isFinishedSemester } from "./utils";
 import gsap from "gsap";
 
 function tierFor(pct: number) {
   if (pct >= 85) return { bg: "var(--cx-green-bg)", fg: "var(--cx-green-fg)" };
   if (pct >= 75) return { bg: "var(--cx-amber-bg)", fg: "var(--cx-amber-fg)" };
   return { bg: "var(--cx-brick-bg)", fg: "var(--cx-brick-fg)" };
-}
-
-function computeMargin(conducted: number, absent: number): number {
-  const skip = canSkip(conducted, absent);
-  if (skip > 0) return skip;
-  return -needToAttend(conducted, absent);
 }
 
 function animateValue(el: Element, target: number, suffix = "", decimals = 0, dur = 1.1, delay = 0) {
@@ -176,7 +170,7 @@ export function AttendanceTab({
 
       <div className="cx-att-row-list">
         {records.map((r, i) => {
-          const margin = computeMargin(r.classesConducted, r.classesAbsent);
+          const margin = attendanceMargin(r.classesConducted, r.classesAbsent);
           const marginColor =
             margin > 0 ? "#3d6b4f" :
               margin === 0 ? "#e7a63f" :
