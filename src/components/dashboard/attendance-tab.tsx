@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { AttendanceRecord } from "@/lib/api";
-import { isFinishedSemester } from "./utils";
+import { canSkip, isFinishedSemester, needToAttend } from "./utils";
 import gsap from "gsap";
 
 function tierFor(pct: number) {
@@ -12,8 +12,9 @@ function tierFor(pct: number) {
 }
 
 function computeMargin(conducted: number, absent: number): number {
-  const attended = conducted - absent;
-  return Math.floor(attended / 0.75 - conducted);
+  const skip = canSkip(conducted, absent);
+  if (skip > 0) return skip;
+  return -needToAttend(conducted, absent);
 }
 
 function animateValue(el: Element, target: number, suffix = "", decimals = 0, dur = 1.1, delay = 0) {
@@ -194,8 +195,15 @@ export function AttendanceTab({
                 <div className="cx-att-row-name">
                   {r.courseTitle}
                 </div>
-                <div className="cx-att-row-pct" data-count={r.attendancePercentage}>
-                  0.0%
+                <div className="cx-att-row-pct-line">
+                  <div className="cx-att-row-pct" data-count={r.attendancePercentage}>
+                    0%
+                  </div>
+                  {r.classesConducted > 0 && (
+                    <span className="cx-att-row-hours">
+                      &middot; {r.classesConducted - r.classesAbsent}/{r.classesConducted}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="cx-att-row-right">
@@ -207,9 +215,9 @@ export function AttendanceTab({
                 >
                   0
                 </div>
-                <div className="cx-att-margin-label" style={{ color: marginColor }}>
+                {/* <div className="cx-att-margin-label" style={{ color: marginColor }}>
                   {margin < 0 ? "required" : margin === 0 ? "margin" : "margin"}
-                </div>
+                </div> */}
               </div>
             </article>
           );

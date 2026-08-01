@@ -266,6 +266,25 @@
   margin-top: 6px;
 }
 
+.cx-att-row-pct-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.cx-att-row-pct-line .cx-att-row-pct {
+  margin-top: 0;
+}
+
+.cx-att-row-hours {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
 .cx-att-row-right {
   display: flex;
   flex-direction: column;
