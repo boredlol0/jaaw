@@ -39,9 +39,11 @@ import {
 function TimetableTabWrapper({
   schedule,
   calendar,
+  semester,
 }: {
   schedule: ScheduleDay[];
   calendar: AcademicCalendar;
+  semester?: string;
 }) {
   const searchParams = useSearchParams();
   return (
@@ -49,6 +51,7 @@ function TimetableTabWrapper({
       schedule={schedule}
       calendar={calendar}
       dayOrderParam={searchParams.get("dayOrder")}
+      semester={semester}
     />
   );
 }
@@ -166,6 +169,7 @@ export default function DashPage({
         <TimetableTabWrapper
           schedule={state.schedule}
           calendar={state.calendar}
+          semester={state.profile?.semester}
         />
       )}
       {tab === "marks" && (

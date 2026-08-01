@@ -122,10 +122,7 @@ export function ProfileTab({
       <div className="cx-pf-glow cx-pf-glow-2" />
       <div className="cx-pf-grain" />
 
-      {/* Kicker */}
       <div className="cx-pf-kicker cx-pf-kicker-kicker"><span>Profile</span></div>
-
-      {/* Profile Card */}
       <div className="cx-pf-card-wrap">
         <div className="cx-pf-card">
           <div className="cx-pf-card-brand">
@@ -154,7 +151,6 @@ export function ProfileTab({
         </div>
       </div>
 
-      {/* Info Grid */}
       <div className="cx-pf-info-grid">
         <div className="cx-pf-info-tile">
           <div className="lbl">Program</div>
@@ -174,7 +170,6 @@ export function ProfileTab({
         </div>
       </div>
 
-      {/* Notifications */}
       <div className="cx-pf-kicker cx-pf-kicker-notif"><span>Settings</span></div>
 
       {toggles.map((t, i) => (
@@ -205,8 +200,6 @@ export function ProfileTab({
           />
         </div>
       ))}
-
-      {/* Logout */}
       <button className="cx-pf-logout" onClick={onLogout}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />

@@ -11,6 +11,7 @@ import {
   timeToMinutes,
   getClassStatus,
   parseTime,
+  normalizeSubject,
 } from "./utils";
 import { TimetableImageDownload } from "./timetable-image-download";
 
@@ -53,10 +54,12 @@ export function TimetableTab({
   schedule,
   calendar,
   dayOrderParam,
+  semester,
 }: {
   schedule: ScheduleDay[];
   calendar: AcademicCalendar;
   dayOrderParam: string | null;
+  semester?: string;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -133,22 +136,19 @@ export function TimetableTab({
 
   return (
     <div className="cx-timetable-tab" ref={rootRef}>
-      {/* Background */}
       <div className="cx-tt-grid" />
       <div className="cx-tt-glow cx-tt-glow-1" />
       <div className="cx-tt-glow cx-tt-glow-2" />
       <div className="cx-tt-grain" />
 
-      {/* Kicker */}
       <div className="cx-tt-kicker">
         <span>Timetable</span>
         <span className="cx-tt-kicker-right">
           {/* <span className="cx-tt-kicker-date">{todayStr()}</span> */}
-          <TimetableImageDownload schedule={schedule} />
+          <TimetableImageDownload schedule={schedule} semester={semester} />
         </span>
       </div>
 
-      {/* Day Tabs */}
       <div className="cx-tt-day-tabs">
         {schedule.map((day, i) => {
           const dayNum = day.dayLabel.replace(/[^0-9]/g, "");
@@ -170,7 +170,6 @@ export function TimetableTab({
         })}
       </div>
 
-      {/* Timeline */}
       {isEmpty ? (
         <div className="cx-tt-empty">No classes for this day.</div>
       ) : (
@@ -227,7 +226,7 @@ export function TimetableTab({
 
                     <div className="cx-tt-card-left">
                       <div className="cx-tt-card-code">{entry.courseCode}</div>
-                      <div className="cx-tt-card-name">{entry.courseTitle}</div>
+                      <div className="cx-tt-card-name">{normalizeSubject(entry.courseTitle)}</div>
                       <div className="cx-tt-card-meta">
                         <span>{entry.room}</span>
                         <span>{entry.faculty.split("(")[0].trim()}</span>

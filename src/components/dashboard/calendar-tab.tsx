@@ -158,8 +158,6 @@ export function CalendarTab({ calendar }: { calendar: AcademicCalendar }) {
       <div className="cx-cal-grain" />
 
       <div className="cx-cal-kicker"><span>Calendar</span></div>
-
-      {/* Hero */}
       <div
         className="cx-cal-hero"
         ref={heroRef}
@@ -181,8 +179,6 @@ export function CalendarTab({ calendar }: { calendar: AcademicCalendar }) {
           </div>
         )}
       </div>
-
-      {/* Nav */}
       <div className="cx-cal-nav">
         <button
           className="cx-cal-nav-btn"
@@ -214,13 +210,9 @@ export function CalendarTab({ calendar }: { calendar: AcademicCalendar }) {
           </svg>
         </button>
       </div>
-
-      {/* Weekday headers */}
       <div className="cx-cal-weekdays">
         <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
       </div>
-
-      {/* Grid (desktop) */}
       <div className="cx-cal-grid">
         {Array.from({ length: leadingEmpties }).map((_, i) => (
           <div key={`blank-${i}`} className="cx-cal-cell is-blank" />
@@ -248,8 +240,6 @@ export function CalendarTab({ calendar }: { calendar: AcademicCalendar }) {
           );
         })}
       </div>
-
-      {/* List view (mobile) */}
       <div className="cx-cal-list">
         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
           const date = new Date(month.year, month.monthIndex - 1, day);

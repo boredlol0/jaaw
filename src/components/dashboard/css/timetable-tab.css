@@ -33,7 +33,7 @@
   font-family: "Space Mono", monospace;
 }
 
-/* ─── Background ─── */
+
 
 .cx-tt-grid {
   position: fixed;
@@ -84,7 +84,7 @@
   left: 22%;
 }
 
-/* ─── Section Kicker ─── */
+
 
 .cx-tt-kicker {
   font-size: 11.5px;
@@ -143,7 +143,7 @@
   cursor: default;
 }
 
-/* ─── Day Tabs ─── */
+
 
 .cx-tt-day-tabs {
   display: flex;
@@ -180,7 +180,7 @@
   color: var(--cx-bg);
 }
 
-/* ─── Timeline ─── */
+
 
 .cx-tt-timeline {
   display: flex;
@@ -266,7 +266,7 @@
   }
 }
 
-/* ─── Card ─── */
+
 
 .cx-tt-card {
   position: relative;
@@ -349,7 +349,7 @@
   letter-spacing: 0.04em;
 }
 
-/* ─── Live Tag ─── */
+
 
 .cx-tt-live-tag {
   position: absolute;
@@ -376,7 +376,7 @@
   background: var(--cx-bg);
 }
 
-/* ─── Break Indicator ─── */
+
 
 .cx-tt-break {
   display: flex;
@@ -399,7 +399,7 @@
   background-repeat: repeat-x;
 }
 
-/* ─── Empty State ─── */
+
 
 .cx-tt-empty {
   text-align: center;
@@ -410,7 +410,7 @@
   z-index: 2;
 }
 
-/* ─── Export Table (hidden, captured by html2canvas) ─── */
+
 
 .cx-tt-table-export {
   position: fixed;
@@ -425,15 +425,16 @@
   background: #0a0a0b;
   font-family: "Space Mono", "Inter", monospace;
   color: #f4f2ea;
+  text-transform: none;
 }
 
-/* ─── Top bar: logo + title inline ─── */
+
 
 .cx-tt-export-top-bar {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding-bottom: 16px;
+  padding: 4px 0 18px;
   border-bottom: 1px solid rgba(244, 242, 234, 0.09);
   margin-bottom: 20px;
   position: relative;
@@ -445,17 +446,35 @@
 }
 
 .cx-tt-export-title {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.cx-tt-export-title-main {
   font-family: "Unbounded", sans-serif;
   font-size: 17px;
   font-weight: 700;
   letter-spacing: 0.02em;
-  line-height: 28px;
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  line-height: 1.15;
 }
 
-/* ─── Table ─── */
+.cx-tt-export-title-sub {
+  font-family: "Space Mono", "Inter", monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(244, 242, 234, 0.5);
+}
+
+
 
 .cx-tt-export-table {
   border-collapse: separate;
@@ -470,17 +489,21 @@
   border: 1px solid rgba(244, 242, 234, 0.09);
   padding: 8px 10px;
   vertical-align: top;
-  font-size: 10.5px;
+  font-size: 11px;
   word-break: break-word;
   overflow-wrap: break-word;
   hyphens: none;
   width: 150px;
 }
 
+.cx-tt-export-td {
+  height: 96px;
+}
+
 .cx-tt-export-th {
   text-align: center;
   background: rgba(244, 242, 234, 0.04);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.02em;
 }
 
@@ -492,21 +515,21 @@
 .cx-tt-export-th-start {
   display: block;
   font-family: "Unbounded", sans-serif;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
 
 .cx-tt-export-th-end {
   display: block;
-  font-size: 9px;
+  font-size: 10px;
   opacity: 0.55;
   margin-top: 2px;
 }
 
 .cx-tt-export-td-day {
   font-weight: 700;
-  font-size: 11px;
+  font-size: 16px;
   letter-spacing: 0.06em;
   text-align: center;
   vertical-align: middle;
@@ -527,18 +550,12 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
-}
-
-.cx-tt-export-code {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: #f4f2ea;
+  height: 100%;
 }
 
 .cx-tt-export-cell .cx-tt-export-cell-title {
   font-family: "Inter", "Segoe UI", sans-serif;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.01em;
   line-height: 1.2;
@@ -546,15 +563,20 @@
   padding: 0;
   margin: 0;
   color: #f4f2ea;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 .cx-tt-export-room {
-  font-size: 8px;
+  margin-top: auto;
+  font-size: 10px;
   opacity: 0.6;
   letter-spacing: 0.02em;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
-/* ─── Legend ─── */
+
 
 .cx-tt-export-legend {
   display: flex;
@@ -589,7 +611,7 @@
   background: #14B8A6;
 }
 
-/* ─── Footer bar (legend left, watermark right) ─── */
+
 
 .cx-tt-export-footer {
   display: flex;
@@ -608,7 +630,7 @@
   color: rgba(244, 242, 234, 0.5);
 }
 
-/* ─── Responsive ─── */
+
 
 @media (max-width: 760px) {
   .cx-timetable-tab {

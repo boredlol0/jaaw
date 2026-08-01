@@ -20,6 +20,30 @@ export function getInitials(fullName: string): string {
     .toUpperCase();
 }
 
+const ROMAN_NUMERAL = /^[IVXLCDM]+$/;
+
+function titleCaseWord(word: string): string {
+  return word
+    .split(/([^A-Za-z]+)/)
+    .map((part) => {
+      if (!part || !/[A-Za-z]/.test(part)) return part;
+      if (ROMAN_NUMERAL.test(part)) return part;
+      return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+    })
+    .join("");
+}
+
+/** Normalize a course title: title-case words and swap "and" -> "&" */
+export function normalizeSubject(title: string): string {
+  return title
+    .replace(/\band\b/gi, "&")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .map(titleCaseWord)
+    .join(" ");
+}
+
 /** Parse "HH:MM \t" style time strings from the API */
 export function parseTime(raw: string): string {
   return raw.replace(/\\t/g, "").trim();

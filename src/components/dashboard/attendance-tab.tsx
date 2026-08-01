@@ -207,9 +207,9 @@ export function AttendanceTab({
                 >
                   0
                 </div>
-                {/* <div className="cx-att-margin-label" style={{ color: marginColor }}>
+                <div className="cx-att-margin-label" style={{ color: marginColor }}>
                   {margin < 0 ? "required" : margin === 0 ? "margin" : "margin"}
-                </div> */}
+                </div>
               </div>
             </article>
           );

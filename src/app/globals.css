@@ -167,8 +167,8 @@ body {
   height: 11px;
   display: block;
   background: #060606;
-  /* background: green; */
-  /* Hack to style the browser UI while making it invisible to the user */
+
+
   mask-image: linear-gradient(to right, transparent, transparent);
   -webkit-mask-image: linear-gradient(to right, transparent, transparent);
 }
@@ -180,7 +180,7 @@ body {
   display: block;
   z-index: 10001;
   background: green;
-  /* Hack to style the browser UI while making it invisible to the user */
+
   mask-image: linear-gradient(to right, transparent, transparent);
   -webkit-mask-image: linear-gradient(to right, transparent, transparent);
 }

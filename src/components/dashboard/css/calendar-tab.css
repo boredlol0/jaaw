@@ -39,7 +39,7 @@
   font-family: "Space Mono", monospace;
 }
 
-/* ─── Background ─── */
+
 
 .cx-cal-grid-bg {
   position: fixed;
@@ -90,7 +90,7 @@
   left: 22%;
 }
 
-/* ─── Section Kicker ─── */
+
 
 .cx-cal-kicker {
   font-size: 11.5px;
@@ -108,7 +108,7 @@
   z-index: 2;
 }
 
-/* ─── Hero ─── */
+
 
 .cx-cal-hero {
   position: relative;
@@ -180,7 +180,7 @@
   margin-top: 5px;
 }
 
-/* ─── Month Nav ─── */
+
 
 .cx-cal-nav {
   display: flex;
@@ -230,7 +230,7 @@
   letter-spacing: -0.01em;
 }
 
-/* ─── Weekday Headers ─── */
+
 
 .cx-cal-weekdays {
   display: grid;
@@ -250,7 +250,7 @@
   color: var(--cx-muted);
 }
 
-/* ─── Calendar Grid ─── */
+
 
 .cx-cal-grid {
   display: grid;
@@ -320,7 +320,7 @@
   overflow: hidden;
 }
 
-/* ─── Empty State ─── */
+
 
 .cx-cal-empty {
   text-align: center;
@@ -331,7 +331,7 @@
   z-index: 2;
 }
 
-/* ─── Responsive ─── */
+
 
 @media (max-width: 900px) {
   .cx-cal-hero {

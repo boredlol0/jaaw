@@ -36,7 +36,7 @@
   font-family: "Space Mono", monospace;
 }
 
-/* ─── Background ─── */
+
 
 .cx-pf-grid {
   position: fixed;
@@ -87,7 +87,7 @@
   left: 22%;
 }
 
-/* ─── Section Kicker ─── */
+
 
 .cx-pf-kicker {
   font-size: 11.5px;
@@ -105,7 +105,7 @@
   z-index: 2;
 }
 
-/* ─── Jaaw Profile Card ─── */
+
 
 .cx-pf-card-wrap {
   display: flex;
@@ -243,7 +243,7 @@
   color: var(--cx-muted);
 }
 
-/* ─── Info Grid ─── */
+
 
 .cx-pf-info-grid {
   display: grid;
@@ -277,7 +277,7 @@
   margin-top: 8px;
 }
 
-/* ─── Toggle Rows ─── */
+
 
 .cx-pf-toggle-row {
   display: flex;
@@ -356,7 +356,7 @@
   background: var(--cx-bg);
 }
 
-/* ─── Logout Button ─── */
+
 
 .cx-pf-logout {
   width: 100%;
@@ -391,7 +391,7 @@
   color: #c94f4f;
 }
 
-/* ─── Responsive ─── */
+
 
 @media (max-width: 760px) {
   .cx-profile-tab {
