@@ -211,6 +211,60 @@ export function getPreferredCalendarEntry(month: CalendarMonth, todayStr: string
   );
 }
 
+/** Format a Date as YYYY-MM-DD to match calendar entry.date */
+export function toDateKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/** Course codes that run on a given calendar date (empty when no match) */
+export function coursesOnDate(
+  calendar: AcademicCalendar,
+  schedule: ScheduleDay[],
+  dateKey: string
+): string[] {
+  for (const month of calendar.months) {
+    const entry = month.entries.find((e) => e.date === dateKey);
+    if (!entry) continue;
+    const dayOrder = normalizeDayOrder(entry.dayOrder);
+    if (!dayOrder) return [];
+    const idx = findScheduleDayIndexByOrder(schedule, dayOrder);
+    if (idx < 0) return [];
+    return schedule[idx].entries.map((e) => e.courseCode);
+  }
+  return [];
+}
+
+/** Recompute attendance records as if every class on the given dates was missed.
+ *  Selected dates are FUTURE classes: they increase both conducted and absent,
+ *  so attended count stays the same while the percentage shrinks. */
+export function predictAttendance(
+  records: AttendanceRecord[],
+  calendar: AcademicCalendar,
+  schedule: ScheduleDay[],
+  dateKeys: string[]
+): AttendanceRecord[] {
+  const extraAbsent = new Map<string, number>();
+  for (const key of dateKeys) {
+    for (const code of coursesOnDate(calendar, schedule, key)) {
+      extraAbsent.set(code, (extraAbsent.get(code) ?? 0) + 1);
+    }
+  }
+  return records.map((r) => {
+    const added = extraAbsent.get(r.courseCode) ?? 0;
+    if (added === 0) return r;
+    const classesConducted = r.classesConducted + added;
+    const classesAbsent = r.classesAbsent + added;
+    const attendancePercentage =
+      classesConducted > 0
+        ? ((classesConducted - classesAbsent) / classesConducted) * 100
+        : r.attendancePercentage;
+    return { ...r, classesConducted, classesAbsent, attendancePercentage };
+  });
+}
+
 /**
  * If the current class has back-to-back entries (same courseCode, gap <= 5 min),
  * returns the end time of the last consecutive entry. Otherwise returns current.endTime.

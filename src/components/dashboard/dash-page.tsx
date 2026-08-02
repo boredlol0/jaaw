@@ -163,6 +163,8 @@ export default function DashPage({
         <AttendanceTab
           records={state.attendance}
           overallPct={overallPct}
+          schedule={state.schedule}
+          calendar={state.calendar}
         />
       )}
       {tab === "timetable" && (
