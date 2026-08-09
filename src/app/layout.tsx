@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Bebas_Neue } from "next/font/google";
 import { QueryProvider } from "@/lib/query-provider";
+import { SwRegister } from "@/components/sw-register";
+import { OfflineBanner } from "@/components/offline-banner";
 
 const bebasNeue = Bebas_Neue({
   subsets: ["latin"],
@@ -45,7 +47,9 @@ export default function RootLayout({
       </head>
       <body>
         <div className="topbar" aria-hidden="true"></div>
+        <OfflineBanner />
         <QueryProvider>{children}</QueryProvider>
+        <SwRegister />
       </body>
     </html>
   );
