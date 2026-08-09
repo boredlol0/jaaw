@@ -63,6 +63,7 @@ export function TimetableTab({
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
+  const introPlayed = useRef(false);
   const [ready, setReady] = useState(false);
 
   const preferredDayOrder = normalizeDayOrder(dayOrderParam) ?? getTodayDayOrder(calendar);
@@ -98,7 +99,8 @@ export function TimetableTab({
   const dayEntries = selectedDay !== null ? schedule[selectedDay]?.entries ?? [] : [];
 
   useEffect(() => {
-    if (!ready || !rootRef.current || selectedDay === null) return;
+    if (!ready || !rootRef.current || introPlayed.current) return;
+    introPlayed.current = true;
 
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ defaults: { ease: "power4.out" }, delay: 0.05 });
@@ -125,7 +127,7 @@ export function TimetableTab({
     }, rootRef);
 
     return () => ctx.revert();
-  }, [ready, selectedDay]);
+  }, [ready]);
 
   const handleDayClick = (i: number) => {
     setSelectedDay(i);

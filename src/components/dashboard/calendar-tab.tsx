@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import gsap from "gsap";
 import type { AcademicCalendar, CalendarEntry } from "@/lib/api";
 import { normalizeDayOrder } from "./utils";
@@ -55,6 +56,7 @@ function getCellLabel(entry: CalendarEntry | undefined): string | null {
 }
 
 export function CalendarTab({ calendar }: { calendar: AcademicCalendar }) {
+  const router = useRouter();
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
@@ -96,9 +98,15 @@ export function CalendarTab({ calendar }: { calendar: AcademicCalendar }) {
   const selectedTier = tierFor(selectedEntry);
   const selectedBadge = getBadge(selectedEntry);
 
-  const handleDayClick = useCallback((day: number) => {
+  function handleDayClick(day: number) {
+    const entry = dayMap[day];
+    const dayOrder = entry?.dayOrder ? normalizeDayOrder(entry.dayOrder) : null;
+    if (dayOrder) {
+      router.push(`/dash/timetable?dayOrder=${dayOrder}`);
+      return;
+    }
     setSelectedDay(day);
-  }, []);
+  }
 
   useEffect(() => {
     if (!heroRef.current) return;

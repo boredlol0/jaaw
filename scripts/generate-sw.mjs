@@ -68,15 +68,15 @@ try {
     swDest: swPath,
     globDirectory: OUT_DIR,
     globPatterns: [
-      "**/*.{html,js,css,ttf,otf,woff,woff2,png,svg,ico,jpg,jpeg,webp,avif,json}",
+      "**/*.{html,js,css,ttf,otf,woff,woff2,png,svg,ico,jpg,jpeg,webp,avif,json,txt}",
     ],
     globIgnores: [
       "sw.js",
       "_headers",
       "_redirects",
       "config.json",
-      "**/*.txt",
-      "**/__next*/**",
+      "**/__next._full.txt",
+      "**/__next._tree.txt",
     ],
     maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
   });

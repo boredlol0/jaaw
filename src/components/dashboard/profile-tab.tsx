@@ -166,7 +166,7 @@ export function ProfileTab({
         </div>
         <div className="cx-pf-info-tile">
           <div className="lbl">Section</div>
-          <div className="val">{profile.section}</div>
+          <div className="val">{profile.section.replaceAll("(", "").replaceAll(")", "")}</div>
         </div>
       </div>
 

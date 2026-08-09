@@ -27,7 +27,9 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-precacheAndRoute(self.__WB_MANIFEST);
+precacheAndRoute(self.__WB_MANIFEST, {
+  ignoreURLParametersMatching: [/^_rsc$/, /^dayOrder$/, /^utm_/, /^fbclid$/],
+});
 cleanupOutdatedCaches();
 
 /**
