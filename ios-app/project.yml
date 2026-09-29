@@ -2,17 +2,24 @@ name: Jaaw
 
 options:
   bundleIdPrefix: com.boredlol
+  projectFormat: xcode16_0
 
 targets:
   Jaaw:
     type: application
     platform: iOS
-    supportedDestinations:
-      - iOS
     deploymentTarget: "26.0"
 
     sources:
       - Jaaw
+
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.boredlol.jaaw
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+        SDKROOT: iphoneos
+        INFOPLIST_FILE: Jaaw/Info.plist
 
     info:
       path: Jaaw/Info.plist
@@ -20,8 +27,3 @@ targets:
         CFBundleDisplayName: "JAAW"
         CFBundleShortVersionString: "1.0"
         CFBundleVersion: "1"
-
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.boredlol.jaaw
-        SWIFT_VERSION: "5.0"
