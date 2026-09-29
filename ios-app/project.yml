@@ -12,6 +12,13 @@ targets:
     sources:
       - Jaaw
 
+    info:
+      path: Jaaw/Info.plist
+      properties:
+        CFBundleDisplayName: "JAAW"
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.boredlol.jaaw
