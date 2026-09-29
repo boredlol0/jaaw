@@ -24,6 +24,9 @@ jobs:
         with:
           xcode-version: "26.0"
 
+      - name: Download iOS Platform
+        run: xcodebuild -downloadPlatform iOS -buildVersion 26.0
+
       - name: Install XcodeGen
         run: brew install xcodegen
 
