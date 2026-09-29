@@ -1,0 +1,15 @@
+name: Jaaw
+
+targets:
+  Jaaw:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+
+    sources:
+      - Jaaw
+
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.boredlol.jaaw
+        SWIFT_VERSION: 5.0
