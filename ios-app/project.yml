@@ -1,5 +1,8 @@
 name: Jaaw
 
+options:
+  bundleIdPrefix: com.boredlol
+
 targets:
   Jaaw:
     type: application
@@ -12,4 +15,4 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.boredlol.jaaw
-        SWIFT_VERSION: 5.0
+        SWIFT_VERSION: "5.0"
