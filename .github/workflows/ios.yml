@@ -30,20 +30,6 @@ jobs:
       - name: Download iOS Platform
         run: xcodebuild -downloadPlatform iOS
 
-      - name: Inspect Xcode platforms
-        run: |
-          xcode-select -p
-          xcodebuild -version
-
-          echo "=== Installed SDKs ==="
-          xcodebuild -showsdks
-
-          echo "=== iOS Platform ==="
-          ls -la /Applications/Xcode_26.0.1.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/
-
-          echo "=== Available destinations ==="
-          xcodebuild -scheme Jaaw -project Jaaw.xcodeproj -showdestinations
-
       - name: Install XcodeGen
         run: brew install xcodegen
 
