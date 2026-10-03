@@ -1,0 +1,33 @@
+**/xcuserdata/
+**/*.xcuserdatad/
+**/*.xcuserstate
+
+**/build/
+DerivedData/
+
+.build/
+.swiftpm/
+
+*.xcarchive
+
+*.ipa
+
+
+.DS_Store
+
+# =========================
+# CocoaPods
+# =========================
+
+Pods/
+
+Carthage/Build/
+
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+.env
+.env.*
+!.env.example
