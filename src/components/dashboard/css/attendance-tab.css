@@ -382,6 +382,10 @@
   white-space: nowrap;
 }
 
+.cx-att-margin-val--split {
+  font-size: clamp(20px, 2.4vw, 28px);
+}
+
 .cx-att-margin-label {
   font-size: 9.5px;
   font-weight: 700;

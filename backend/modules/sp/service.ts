@@ -135,9 +135,24 @@ function pageTitle(body: string): string {
   return match ? match[1].replace(/\s+/g, " ").trim().slice(0, 80) : "";
 }
 
+const NO_COLOR = process.env.NO_COLOR === "1" || process.env.NO_COLOR === "true";
+
 function spLog(...args: unknown[]): void {
   if (process.env.SP_DEBUG === "0") return;
-  console.log("[sp]", ...args);
+  if (NO_COLOR) {
+    console.log("[sp]", ...args);
+    return;
+  }
+  console.log("\x1b[36m[sp]\x1b[0m", ...args);
+}
+
+function spErr(...args: unknown[]): void {
+  if (process.env.SP_DEBUG === "0") return;
+  if (NO_COLOR) {
+    console.error("[sp]", ...args);
+    return;
+  }
+  console.error("\x1b[31m[sp]\x1b[0m", ...args);
 }
 
 function spDump(step: string, body: string): void {
@@ -201,7 +216,6 @@ async function followLoaders(
   for (let hop = 0; hop < 5; hop++) {
     if (!/theGR8LoginLoader/i.test(currentBody)) break;
     const target = new URL("../../students/loginManager/youLogin.jsp", currentUrl).toString();
-    spLog(`loader hop ${hop + 1} -> POST ${target}`);
     let res: Response;
     try {
       res = await session.postForm(target, {});
@@ -210,8 +224,6 @@ async function followLoaders(
     }
     currentUrl = res.url;
     currentBody = await res.text();
-    spLog(`loader hop ${hop + 1} <- status=${res.status} url=${currentUrl} cookies=[${session.cookieNames().join(",")}] ${fingerprint(currentBody)}`);
-    spDump(`loader-hop-${hop + 1}`, currentBody);
   }
   return { url: currentUrl, body: currentBody };
 }
@@ -320,9 +332,6 @@ async function fetchPortalData(session: SpSession) {
 
   const attLoggedOut = isLoggedOut(attUrl, attHtml);
   const marksLoggedOut = isLoggedOut(marksUrl, marksHtml);
-  spLog(
-    `portal data -> att status=${attRes.status} url=${attUrl} len=${attHtml.length} loggedOut=${attLoggedOut} | marks status=${marksRes.status} url=${marksUrl} len=${marksHtml.length} loggedOut=${marksLoggedOut}`,
-  );
   if (attLoggedOut || marksLoggedOut) return null;
 
   const attendance = SpAttendanceParser.extract(attHtml);
@@ -424,10 +433,6 @@ export async function spLogin(input: SpLoginInput) {
   } catch {
     throw new HttpError(503, "Student Portal is unreachable right now.");
   }
-  spLog(
-    `login POST -> status=${loginStatus} finalUrl=${loginFinalUrl} cookies=[${session.cookieNames().join(",")}] ${fingerprint(loginBody)}`,
-  );
-  spDump("login-post", loginBody);
 
   if (/theGR8LoginLoader/i.test(loginBody)) {
     const followed = await followLoaders(session, loginFinalUrl, loginBody);
@@ -450,11 +455,9 @@ export async function spLogin(input: SpLoginInput) {
       failure.type === "LOGIN_FAILED"
         ? `Student Portal login failed (portal returned "${pageTitle(loginBody) || "an unknown page"}"). Check your NetID/password and try a fresh captcha.`
         : failure.message;
-    spLog(`login failed -> type=${failure.type} message=${JSON.stringify(message)}`);
-    throw new HttpError(failure.status, { type: failure.type, message });
-  }
+    spErr(`login failed -> type=${failure.type} message=${JSON.stringify(message)}`);
+    throw new HttpError(failure.status, { type: failure.type, message });  }
   spLog(`login ok -> attendance=${data.attendance.length} marks=${data.marks.length}`);
-
   return {
     success: true,
     source: "sp",

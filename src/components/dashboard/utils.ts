@@ -219,6 +219,74 @@ export function toDateKey(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+/** Lab-session count for a joint (theory+lab) course, derived from past calendar days.
+ *  Lab = schedule entries with slotType "Practical". Back-to-back periods on the
+ *  same day count as one session. Only strictly-past dates are counted. */
+export interface LabSessionInfo {
+  labHours: number;
+  sessions: number;
+  hoursPerSession: number;
+}
+
+export function countLabSessions(
+  courseCode: string,
+  calendar: AcademicCalendar,
+  schedule: ScheduleDay[],
+): LabSessionInfo {
+  const empty: LabSessionInfo = { labHours: 0, sessions: 0, hoursPerSession: 0 };
+  if (!calendar?.months || schedule.length === 0) return empty;
+
+  const todayKey = toDateKey(new Date());
+  let labHours = 0;
+  let sessions = 0;
+  const sessionLens: number[] = [];
+
+  for (const month of calendar.months) {
+    for (const entry of month.entries ?? []) {
+      if (!entry.date || entry.date >= todayKey) continue;
+      const order = normalizeDayOrder(entry.dayOrder);
+      if (!order) continue;
+      const idx = findScheduleDayIndexByOrder(schedule, order);
+      if (idx < 0) continue;
+
+      const labs = schedule[idx].entries
+        .filter((e) => e.courseCode === courseCode && e.slotType === "Practical")
+        .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+
+      labHours += labs.length;
+
+      let current = 0;
+      for (let k = 0; k < labs.length; k++) {
+        const contiguous =
+          k > 0 && timeToMinutes(labs[k].startTime) === timeToMinutes(labs[k - 1].endTime);
+        if (!contiguous) {
+          if (current > 0) sessionLens.push(current);
+          current = 1;
+          sessions++;
+        } else {
+          current++;
+        }
+      }
+      if (current > 0) sessionLens.push(current);
+    }
+  }
+
+  if (sessions === 0) return empty;
+
+  const counts = new Map<number, number>();
+  for (const len of sessionLens) counts.set(len, (counts.get(len) ?? 0) + 1);
+  let hoursPerSession = sessionLens[0];
+  let best = 0;
+  for (const [len, count] of counts) {
+    if (count > best) {
+      best = count;
+      hoursPerSession = len;
+    }
+  }
+
+  return { labHours, sessions, hoursPerSession };
+}
+
 /** Course codes that run on a given calendar date (empty when no match) */
 export function coursesOnDate(
   calendar: AcademicCalendar,
