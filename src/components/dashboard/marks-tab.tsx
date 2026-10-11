@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import type { MarkRecord, CourseCatalogEntry } from "@/lib/api";
+import { SpFallbackForm } from "./sp-fallback-form";
 
 function tierColor(pct: number): string {
   if (pct >= 80) return "var(--cx-teal-bg)";
@@ -245,7 +246,26 @@ export function MarksTab({
       </div>
 
       {marks.length === 0 ? (
-        <div className="cx-mk-empty">No marks yet.</div>
+        <>
+          <div
+            className="relative z-[2] rounded-[22px] p-8 sm:p-9"
+            style={{ background: "var(--cx-brick-bg)", color: "var(--cx-brick-fg)" }}
+          >
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] opacity-80">
+              Marks unavailable
+            </p>
+            <h2 className="mt-3 font-[Unbounded,sans-serif] text-2xl font-black leading-tight sm:text-3xl">
+              No data
+            </h2>
+            <p className="mt-2 text-[13px] leading-relaxed opacity-80">
+              Failed to get marks from Academia.
+            </p>
+          </div>
+
+          <div className="relative z-[2] mt-4">
+            <SpFallbackForm kind="marks" />
+          </div>
+        </>
       ) : (
         <div>
           {marks.map((m, i) => (

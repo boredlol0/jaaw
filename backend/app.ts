@@ -8,6 +8,7 @@ import { profileModule } from "./modules/profile";
 import { timetableModule } from "./modules/timetable";
 import { calendarModule } from "./modules/calendar";
 import { coursesModule } from "./modules/courses";
+import { spModule } from "./modules/sp";
 import cors from "@fastify/cors";
 
 export function buildApp() {
@@ -28,6 +29,7 @@ export function buildApp() {
   app.register(timetableModule);
   app.register(calendarModule);
   app.register(coursesModule);
+  app.register(spModule);
 
   return app;
 }
