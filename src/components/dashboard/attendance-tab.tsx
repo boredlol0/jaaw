@@ -15,7 +15,7 @@ import { CalendarDaysIcon, ChevronDownIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import {
+import { SpFallbackForm } from "./sp-fallback-form";import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
@@ -108,7 +108,7 @@ export function AttendanceTab({
 
     const ctx = gsap.context(() => {
       const heroEl = el.querySelector(".cx-att-hero-value");
-      if (heroEl) {
+      if (heroEl && displayRecords.length > 0) {
         gsap.killTweensOf(heroEl);
         animateValue(heroEl, displayOverallPct, "%", 1, 1.3, 0.25);
       }
@@ -182,6 +182,37 @@ export function AttendanceTab({
   function handleClear() {
     setSelected([]);
     setPredicted(null);
+  }
+
+  if (records.length === 0) {
+    return (
+      <div ref={rootRef} className="cx-attendance-tab">
+        <div className="cx-att-grid" aria-hidden="true" />
+        <div className="cx-att-glow cx-att-glow-1" aria-hidden="true" />
+        <div className="cx-att-glow cx-att-glow-2" aria-hidden="true" />
+        <div className="cx-att-grain" aria-hidden="true" />
+
+        <div className="cx-att-kicker">
+          <span>Attendance</span>
+          <span className="cx-att-date">{todayLabel}</span>
+        </div>
+
+        <div
+          className="cx-att-hero-card"
+          style={{ background: "var(--cx-brick-bg)", color: "var(--cx-brick-fg)" }}
+        >
+          <div className="cx-att-hero-top">
+            <span className="cx-att-hero-label">Attendance unavailable</span>
+          </div>
+          <div className="cx-att-hero-value">No data</div>
+          <div className="cx-att-hero-meta">
+            Failed to get attendance from Academia.
+          </div>
+        </div>
+
+        <SpFallbackForm kind="attendance" />
+      </div>
+    );
   }
 
   const predictControl = (

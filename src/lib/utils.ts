@@ -6,5 +6,5 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function getApiUrl(): string {
-  return "http://192.168.1.17:4000";
+  return "http://192.168.1.6:4000";
 }

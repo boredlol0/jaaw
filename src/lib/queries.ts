@@ -23,7 +23,7 @@ import { loadSession, saveSession, updateDashData, clearSession } from "./storag
 import type { StoredDashData, StoredSession } from "./storage";
 import { processLaunchUpdates } from "./updates";
 
-const QK = {
+export const QK = {
   dashboard: (username: string) => ["dashboard", username] as const,
   attendance: (username: string) => ["attendance", username] as const,
   marks: (username: string) => ["marks", username] as const,

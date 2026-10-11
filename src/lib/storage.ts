@@ -1,11 +1,3 @@
-/**
- * jaaw storage utilities
- *
- * XOR-based credential obfuscation for localStorage.
- * NOT cryptographic security — purely obscures plaintext
- * from casual inspection of DevTools / storage.
- */
-
 const STORAGE_KEY = "jaaw_session";
 const XOR_KEY = "jaaw_xk";
 

@@ -8,7 +8,6 @@
 
 import { getApiUrl } from "./utils";
 
-/** A resolved API response — data is typed at the call site */
 export interface ApiResult<T = unknown> {
   data: T;
   url: string;
@@ -24,7 +23,10 @@ export type CredentialRoute =
   | "/profile"
   | "/courses"
   | "/schedule"
-  | "/calendar";
+  | "/calendar"
+  | "/sp/captcha"
+  | "/sp/login"
+  | "/sp/refresh";
 
 interface CredentialsPayload {
   username: string;
@@ -46,7 +48,7 @@ async function getApiUrls(): Promise<string[]> {
       window.location.hostname.includes("vercel.app"));
 
   if (!isProduction) {
-    cachedApiUrls = ["http://192.168.1.17:4000"];
+    cachedApiUrls = ["http://192.168.1.6:4000"];
     return cachedApiUrls;
   }
 
@@ -342,6 +344,47 @@ export async function apiCourses(creds: CredentialsPayload) {
 /** POST /schedule */
 export async function apiSchedule(creds: CredentialsPayload) {
   return apiFetch<ScheduleResponse>("/schedule", creds);
+}
+
+export interface SpCaptchaResponse {
+  success: boolean;
+  cdigest: string;
+  image: string;
+}
+
+export interface SpLoginResponse {
+  success: boolean;
+  source: "sp";
+  attendance: AttendanceRecord[];
+  marks: MarkRecord[];
+  session: { cookies: Record<string, string> };
+}
+
+export interface SpPayload {
+  netid?: string;
+  username?: string;
+  password?: string;
+  captcha?: string;
+  cdigest?: string;
+  cookies?: Record<string, string>;
+}
+
+export async function apiSpCaptcha() {
+  return apiFetch<SpCaptchaResponse>("/sp/captcha", {} as CredentialsPayload);
+}
+
+export async function apiSpLogin(creds: SpPayload) {
+  const result = await apiFetch<SpLoginResponse>("/sp/login", creds as CredentialsPayload);
+  result.data.marks = normalizeMarks(result.data.marks);
+  return result;
+}
+
+export async function apiSpRefresh(cookies: Record<string, string>) {
+  const result = await apiFetch<SpLoginResponse>("/sp/refresh", {
+    cookies,
+  } as unknown as CredentialsPayload);
+  result.data.marks = normalizeMarks(result.data.marks);
+  return result;
 }
 
 /** POST /calendar */
