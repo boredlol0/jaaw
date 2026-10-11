@@ -1,21 +1,25 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AcademicCalendar, AttendanceRecord, ScheduleDay } from "@/lib/api";
 import {
   attendanceMargin,
+  countLabSessions,
   isFinishedSemester,
   normalizeDayOrder,
   overallAttendance,
   predictAttendance,
   toDateKey,
+  type LabSessionInfo,
 } from "./utils";
 import gsap from "gsap";
 import { CalendarDaysIcon, ChevronDownIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { SpFallbackForm } from "./sp-fallback-form";import {
+import { SpFallbackForm } from "./sp-fallback-form";
+import { TheorySplitModal } from "./theory-split-modal";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
@@ -25,6 +29,78 @@ function tierFor(pct: number) {
   if (pct >= 85) return { bg: "var(--cx-green-bg)", fg: "var(--cx-green-fg)" };
   if (pct >= 75) return { bg: "var(--cx-amber-bg)", fg: "var(--cx-amber-fg)" };
   return { bg: "var(--cx-brick-bg)", fg: "var(--cx-brick-fg)" };
+}
+
+/** Joint theory+lab courses have codes ending in J — their attendance is combined. */
+function isJointCourse(courseCode: string): boolean {
+  return /j$/i.test(courseCode.trim());
+}
+
+function JointCourseNote() {
+  return (
+    <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#e7a63f]">
+      Theory + lab combined
+    </div>
+  );
+}
+
+interface TheoryLabSplit {
+  theoryConducted: number;
+  theoryAbsent: number;
+  theoryMargin: number;
+  labConducted: number;
+  labAbsent: number;
+  labMargin: number;
+}
+
+/** Split a joint course's combined attendance into theory + lab parts.
+ *  Returns null when the split is impossible with the given missed lab count. */
+function splitTheoryLab(
+  r: AttendanceRecord,
+  missedSessions: number,
+  lab: LabSessionInfo,
+): TheoryLabSplit | null {
+  if (lab.sessions === 0 || lab.labHours === 0) return null;
+  const labAbsent = missedSessions * lab.hoursPerSession;
+  const theoryConducted = r.classesConducted - lab.labHours;
+  if (theoryConducted < 0 || labAbsent > r.classesAbsent || labAbsent > lab.labHours) {
+    return null;
+  }
+  const theoryAbsent = r.classesAbsent - labAbsent;
+  return {
+    theoryConducted,
+    theoryAbsent,
+    theoryMargin: attendanceMargin(theoryConducted, theoryAbsent),
+    labConducted: lab.labHours,
+    labAbsent,
+    labMargin: attendanceMargin(lab.labHours, labAbsent),
+  };
+}
+
+function splitPct(attended: number, conducted: number): string {
+  if (conducted <= 0) return "—";
+  return `${((attended / conducted) * 100).toFixed(1)}%`;
+}
+
+const SPLIT_KEY = "jaaw_theory_split";
+
+function loadSplitSel(): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(SPLIT_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const out: Record<string, number> = {};
+    for (const [code, missed] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof missed === "number" && Number.isFinite(missed) && missed >= 0) {
+        out[code] = Math.floor(missed);
+      }
+    }
+    return out;
+  } catch {
+    return {};
+  }
 }
 
 function animateValue(el: Element, target: number, suffix = "", decimals = 0, dur = 1.1, delay = 0) {
@@ -65,6 +141,16 @@ export function AttendanceTab({
   const [predicted, setPredicted] = useState<Predicted | null>(null);
   const justApplied = useRef(false);
 
+  const [splitSel, setSplitSel] = useState<Record<string, number>>(loadSplitSel);
+  const [splitCode, setSplitCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SPLIT_KEY, JSON.stringify(splitSel));
+    } catch {
+    }
+  }, [splitSel]);
+
   const todayLabel = new Date().toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -76,6 +162,20 @@ export function AttendanceTab({
 
   const displayRecords = predicted?.records ?? records;
   const displayOverallPct = predicted?.overallPct ?? overallPct;
+
+  const labMap = useMemo(() => {
+    const map = new Map<string, LabSessionInfo>();
+    for (const r of displayRecords) {
+      if (isJointCourse(r.courseCode) && !map.has(r.courseCode)) {
+        map.set(r.courseCode, countLabSessions(r.courseCode, calendar, schedule));
+      }
+    }
+    return map;
+  }, [displayRecords, calendar, schedule]);
+
+  const splitTarget = splitCode
+    ? (displayRecords.find((r) => r.courseCode === splitCode) ?? null)
+    : null;
 
   useEffect(() => {
     const el = rootRef.current;
@@ -128,7 +228,7 @@ export function AttendanceTab({
     }, el);
 
     return () => ctx.revert();
-  }, [displayOverallPct, displayRecords]);
+  }, [displayOverallPct, displayRecords, splitSel]);
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
@@ -235,7 +335,7 @@ export function AttendanceTab({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="w-[340px] [font-family:'Space_Mono',monospace] [--cell-size:--spacing(8)] [--primary:#ffffff] [--primary-foreground:#0a0a0b] border-border/60 bg-[#131316]/95 text-[#f4f2ea] shadow-2xl shadow-black/60 backdrop-blur-xl"
+        className="w-85 font-['Space_Mono',monospace] [--cell-size:--spacing(8)] [--primary:#ffffff] [--primary-foreground:#0a0a0b] border-border/60 bg-[#131316]/95 text-[#f4f2ea] shadow-2xl shadow-black/60 backdrop-blur-xl"
       >
         <Calendar
           mode="multiple"
@@ -319,6 +419,7 @@ export function AttendanceTab({
                   <div className="cx-att-row-name">
                     {r.courseTitle}
                   </div>
+                  {isJointCourse(r.courseCode) && <JointCourseNote />}
                 </div>
                 <div className="cx-att-pct" data-count={r.attendancePercentage}>
                   0.0%
@@ -373,6 +474,18 @@ export function AttendanceTab({
               margin === 0 ? "#e7a63f" :
                 "#c94f4f";
 
+          const isJoint = isJointCourse(r.courseCode);
+          const lab = isJoint ? labMap.get(r.courseCode) : undefined;
+          const missed = splitSel[r.courseCode];
+          const split =
+            isJoint && missed != null && lab ? splitTheoryLab(r, missed, lab) : null;
+          const theoryColor = split
+            ? split.theoryMargin > 0 ? "#3d6b4f" : split.theoryMargin === 0 ? "#e7a63f" : "#c94f4f"
+            : marginColor;
+          const labColor = split
+            ? split.labMargin > 0 ? "#3d6b4f" : split.labMargin === 0 ? "#e7a63f" : "#c94f4f"
+            : marginColor;
+
           return (
             <article
               key={`${r.courseCode}-${i}`}
@@ -386,6 +499,18 @@ export function AttendanceTab({
                 <div className="cx-att-row-name">
                   {r.courseTitle}
                 </div>
+                {isJoint && (
+                  <>
+                    <JointCourseNote />
+                    <button
+                      type="button"
+                      onClick={() => setSplitCode(r.courseCode)}
+                      className="mt-2 inline-flex items-center rounded-full border border-[#e7a63f]/40 bg-[#e7a63f]/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#e7a63f] transition hover:bg-[#e7a63f]/20"
+                    >
+                      {missed != null ? "Edit theory split" : "Calculate theory"}
+                    </button>
+                  </>
+                )}
                 <div className="cx-att-row-pct-line">
                   <div className="cx-att-row-pct" data-count={r.attendancePercentage}>
                     0%
@@ -396,21 +521,83 @@ export function AttendanceTab({
                     </span>
                   )}
                 </div>
+                {split && (
+                  <div className="mt-1 text-[11px] font-bold tracking-wide opacity-75">
+                    T {splitPct(split.theoryConducted - split.theoryAbsent, split.theoryConducted)} &middot; L{" "}
+                    {splitPct(split.labConducted - split.labAbsent, split.labConducted)}
+                  </div>
+                )}
               </div>
               <div className="cx-att-row-right">
-                <div
-                  className="cx-att-margin-val"
-                  data-margin={margin}
-                  data-req={margin < 0}
-                  style={{ color: marginColor }}
-                >
-                  0
-                </div>
+                {split ? (
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="flex flex-col items-end">
+                      <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#8d8d95]">
+                        Theory
+                      </span>
+                      <div
+                        className="cx-att-margin-val cx-att-margin-val--split"
+                        data-margin={split.theoryMargin}
+                        data-req={split.theoryMargin < 0}
+                        style={{ color: theoryColor }}
+                      >
+                        {Math.abs(split.theoryMargin)}
+                        {split.theoryMargin < 0 ? " required" : " margin"}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#8d8d95]">
+                        Lab
+                      </span>
+                      <div
+                        className="cx-att-margin-val cx-att-margin-val--split"
+                        data-margin={split.labMargin}
+                        data-req={split.labMargin < 0}
+                        style={{ color: labColor }}
+                      >
+                        {Math.abs(split.labMargin)}
+                        {split.labMargin < 0 ? " required" : " margin"}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="cx-att-margin-val"
+                    data-margin={margin}
+                    data-req={margin < 0}
+                    style={{ color: marginColor }}
+                  >
+                    0
+                  </div>
+                )}
               </div>
             </article>
           );
         })}
       </div>
+      {splitTarget && (
+        <TheorySplitModal
+          courseCode={splitTarget.courseCode}
+          courseTitle={splitTarget.courseTitle}
+          conducted={splitTarget.classesConducted}
+          absent={splitTarget.classesAbsent}
+          lab={labMap.get(splitTarget.courseCode) ?? { labHours: 0, sessions: 0, hoursPerSession: 0 }}
+          missed={splitSel[splitTarget.courseCode] ?? 0}
+          onApply={(missedSessions) => {
+            setSplitSel((prev) => ({ ...prev, [splitTarget.courseCode]: missedSessions }));
+            setSplitCode(null);
+          }}
+          onClear={() => {
+            setSplitSel((prev) => {
+              const next = { ...prev };
+              delete next[splitTarget.courseCode];
+              return next;
+            });
+            setSplitCode(null);
+          }}
+          onClose={() => setSplitCode(null)}
+        />
+      )}
     </div>
   );
 }

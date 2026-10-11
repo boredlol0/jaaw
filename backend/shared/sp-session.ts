@@ -63,9 +63,6 @@ export class SpSession {
     const cookieHeader = this.buildCookieHeader();
     if (cookieHeader) headers.set("cookie", cookieHeader);
 
-    // Manual redirects: fetch's transparent following drops Set-Cookie headers
-    // from intermediate 3xx responses (e.g. a rotated JSESSIONID on login),
-    // so walk the chain and capture cookies at every hop.
     const response = await fetch(currentUrl, { ...currentInit, headers, redirect: "manual" });
     this.captureCookies(response);
 

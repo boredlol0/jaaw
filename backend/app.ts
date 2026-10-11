@@ -1,4 +1,4 @@
-import Fastify from "fastify";
+import Fastify, { type FastifyServerOptions } from "fastify";
 import { errorHandlerPlugin } from "./plugins/error-handler";
 import { healthModule } from "./modules/health";
 import { authModule } from "./modules/auth";
@@ -11,8 +11,8 @@ import { coursesModule } from "./modules/courses";
 import { spModule } from "./modules/sp";
 import cors from "@fastify/cors";
 
-export function buildApp() {
-  const app = Fastify({ logger: true });
+export function buildApp(options?: FastifyServerOptions) {
+  const app = Fastify({ logger: true, ...options });
 
 
   app.register(cors, {

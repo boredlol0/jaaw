@@ -140,7 +140,7 @@ export function SpFallbackForm({ kind }: { kind: "attendance" | "marks" }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="relative z-[2] rounded-[22px] border border-white/10 bg-white/[0.04] p-6 sm:p-8"
+      className="relative z-2 rounded-[22px] border border-white/10 bg-white/4 p-6 sm:p-8"
     >
       <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#e7a63f]">
         Student Portal fallback
