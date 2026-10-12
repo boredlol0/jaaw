@@ -228,20 +228,30 @@ async function followLoaders(
   return { url: currentUrl, body: currentBody };
 }
 
-function classifyLoginFailure(body: string): { status: number; type: string; message: string } {
+function classifyLoginFailure(body: string): {
+  status: number;
+  type: string;
+  message: string;
+  alertHtml: string;
+} {
   const $ = cheerio.load(body);
   const alertEl = $(".alert-icon-content").first().length
     ? $(".alert-icon-content").first()
     : $(".alert-danger").first();
+  // Raw alert markup (first 500 chars) — error banners carry no PII, invaluable for debugging.
+  const alertHtml = alertEl.length
+    ? (alertEl.html() ?? "").replace(/\s+/g, " ").trim().slice(0, 500)
+    : "";
   let alertText = alertEl.length ? alertEl.text().replace(/\s+/g, " ").trim() : "";
   if (/^alert\b/i.test(alertText)) alertText = alertText.slice(5).trim();
   const blob = alertText.toLowerCase();
+  const base = { alertHtml };
 
   if (blob.includes("invalid captcha") || (blob.includes("captcha") && blob.length > 0)) {
-    return { status: 401, type: "WRONG_CAPTCHA", message: alertText || "Invalid captcha." };
+    return { status: 401, type: "WRONG_CAPTCHA", message: alertText || "Invalid captcha.", ...base };
   }
   if (blob.includes("locked")) {
-    return { status: 403, type: "ACCOUNT_LOCKED", message: alertText };
+    return { status: 403, type: "ACCOUNT_LOCKED", message: alertText, ...base };
   }
   if (
     blob.includes("invalid login credentials") ||
@@ -250,9 +260,9 @@ function classifyLoginFailure(body: string): { status: number; type: string; mes
     blob.includes("unsuccessful") ||
     blob.includes("user id or password")
   ) {
-    return { status: 401, type: "INVALID_CREDENTIALS", message: alertText };
+    return { status: 401, type: "INVALID_CREDENTIALS", message: alertText, ...base };
   }
-  return { status: 401, type: "LOGIN_FAILED", message: alertText || "Student Portal login failed." };
+  return { status: 401, type: "LOGIN_FAILED", message: alertText || "Student Portal login failed.", ...base };
 }
 
 async function fetchCaptchaImage(
@@ -425,6 +435,7 @@ export async function spLogin(input: SpLoginInput) {
   let loginBody = "";
   let loginFinalUrl = "";
   let loginStatus = 0;
+  spLog(`login POST -> jar before=[${session.cookieNames().join(",")}] fields=[${Object.keys(payload).join(",")}]`);
   try {
     const loginRes = await session.postForm(SP_LOGIN_SERVLET, payload, SP_NAV_HEADERS);
     loginStatus = loginRes.status;
@@ -456,6 +467,7 @@ export async function spLogin(input: SpLoginInput) {
         ? `Student Portal login failed (portal returned "${pageTitle(loginBody) || "an unknown page"}"). Check your NetID/password and try a fresh captcha.`
         : failure.message;
     spErr(`login failed -> type=${failure.type} message=${JSON.stringify(message)}`);
+    spErr(`login failed -> page ${fingerprint(loginBody)} alert=${JSON.stringify(failure.alertHtml)}`);
     throw new HttpError(failure.status, { type: failure.type, message });  }
   spLog(`login ok -> attendance=${data.attendance.length} marks=${data.marks.length}`);
   return {
