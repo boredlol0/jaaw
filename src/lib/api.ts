@@ -6,8 +6,6 @@
  * in order. This makes adding backup API servers trivial in the future.
  */
 
-import { getApiUrl } from "./utils";
-
 export interface ApiResult<T = unknown> {
   data: T;
   url: string;
@@ -39,23 +37,26 @@ interface CredentialsPayload {
 
 let cachedApiUrls: string[] | null = null;
 
-async function getApiUrls(): Promise<string[]> {
+const PROD_API_URL = "https://api.jaaw.tosh.cc.cd";
+const LOCAL_API_URL = "http://192.168.1.6:4000";
+
+function getApiUrls(): string[] {
   if (cachedApiUrls) return cachedApiUrls;
 
-  const isProduction =
-    typeof window !== "undefined" &&
-    (window.location.hostname.includes("pages.dev") ||
-      window.location.hostname.includes("vercel.app"));
+  const hostname = typeof window !== "undefined" ? window.location.hostname : "";
+  const isLocal =
+    hostname === "" ||
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "0.0.0.0" ||
+    hostname === "::1" ||
+    hostname.endsWith(".local") ||
+    hostname.startsWith("192.168.") ||
+    hostname.startsWith("10.") ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(hostname);
 
-  if (!isProduction) {
-    cachedApiUrls = ["http://192.168.1.6:4000"];
-    return cachedApiUrls;
-  }
-
-  const res = await fetch("https://pub-7af38719b2fc4730b935ec70c74b8a0c.r2.dev/config.json");
-  const data = await res.json();
-  cachedApiUrls = data.apiServers;
-  return cachedApiUrls!;
+  cachedApiUrls = [isLocal ? LOCAL_API_URL : PROD_API_URL];
+  return cachedApiUrls;
 }
 
 /**
@@ -66,7 +67,7 @@ async function apiFetch<T>(
   route: string,
   payload: CredentialsPayload
 ): Promise<ApiResult<T>> {
-  const urls = await getApiUrls();
+  const urls = getApiUrls();
   let lastError: unknown;
 
   for (const baseUrl of urls) {
