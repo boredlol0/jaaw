@@ -11,6 +11,11 @@ export async function spCaptchaHandler(_request: FastifyRequest, reply: FastifyR
   return reply.send({ success: true, ...result });
 }
 
+export async function spDiagHandler(_request: FastifyRequest, reply: FastifyReply) {
+  const result = await spService.spDiag();
+  return reply.send(result);
+}
+
 export async function spLoginHandler(
   request: FastifyRequest<{ Body: LoginBody }>,
   reply: FastifyReply,

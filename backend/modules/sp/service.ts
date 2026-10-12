@@ -468,7 +468,8 @@ export async function spLogin(input: SpLoginInput) {
         : failure.message;
     spErr(`login failed -> type=${failure.type} message=${JSON.stringify(message)}`);
     spErr(`login failed -> page ${fingerprint(loginBody)} alert=${JSON.stringify(failure.alertHtml)}`);
-    throw new HttpError(failure.status, { type: failure.type, message });  }
+    throw new HttpError(failure.status, { type: failure.type, message });
+  }
   spLog(`login ok -> attendance=${data.attendance.length} marks=${data.marks.length}`);
   return {
     success: true,
@@ -505,5 +506,61 @@ export async function spRefresh(cookies?: Record<string, string>) {
     attendance: data.attendance,
     marks: data.marks,
     session: { cookies: session.getCookieObject() },
+  };
+}
+
+/**
+ * Credential-free environment diagnostics: compares cleanly between hosts
+ * without burning login attempts or solving captchas. Checks server clock
+ * skew (vs the portal's own Date header), egress IP, portal latency, and
+ * which cookies the portal issues to this host.
+ */
+export async function spDiag() {
+  const serverTime = new Date().toISOString();
+  const session = new SpSession();
+
+  let portalDate: string | null = null;
+  let portalLatencyMs: number | null = null;
+  let loginPageBytes: number | null = null;
+  let portalError: string | null = null;
+  try {
+    const t0 = Date.now();
+    const res = await session.get(SP_LOGIN_URL);
+    portalLatencyMs = Date.now() - t0;
+    portalDate = res.headers.get("date");
+    loginPageBytes = (await res.text()).length;
+  } catch (err) {
+    portalError = err instanceof Error ? err.message : "fetch failed";
+  }
+
+  let skewMs: number | null = null;
+  if (portalDate) {
+    const portalMs = Date.parse(portalDate);
+    if (!Number.isNaN(portalMs)) skewMs = Date.now() - portalMs;
+  }
+
+  let egressIp: string | null = null;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+    const res = await fetch("https://api.ipify.org?format=json", { signal: controller.signal });
+    clearTimeout(timer);
+    const data = (await res.json()) as { ip?: string };
+    egressIp = typeof data.ip === "string" ? data.ip : null;
+  } catch {
+    egressIp = null;
+  }
+
+  return {
+    success: true,
+    serverTime,
+    portalDate,
+    skewMs,
+    egressIp,
+    portalLatencyMs,
+    loginPageBytes,
+    cookiesIssued: session.cookieNames(),
+    portalError,
+    node: process.version,
   };
 }

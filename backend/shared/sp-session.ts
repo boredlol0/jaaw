@@ -63,8 +63,24 @@ export class SpSession {
     const cookieHeader = this.buildCookieHeader();
     if (cookieHeader) headers.set("cookie", cookieHeader);
 
+    if (process.env.SP_DEBUG === "headers" || process.env.SP_DEBUG === "body") {
+      console.log(
+        `[sp] -> ${currentInit.method ?? "GET"} ${currentUrl} reqCookies=[${this.cookieNames().join(",")}]`,
+      );
+    }
+
     const response = await fetch(currentUrl, { ...currentInit, headers, redirect: "manual" });
     this.captureCookies(response);
+
+    if (process.env.SP_DEBUG === "headers" || process.env.SP_DEBUG === "body") {
+      const setNames: string[] = [];
+      response.headers.forEach((value, key) => {
+        if (key.toLowerCase() === "set-cookie") setNames.push(value.split(";")[0].split("=")[0]);
+      });
+      console.log(
+        `[sp] <- status=${response.status} url=${response.url || currentUrl} location=${response.headers.get("location") ?? "-"} setCookies=[${setNames.join(",")}] jarNow=[${this.cookieNames().join(",")}]`,
+      );
+    }
 
     const status = response.status;
     const location = response.headers.get("location");
