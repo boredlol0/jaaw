@@ -29,7 +29,7 @@ export function buildApp(options?: FastifyServerOptions) {
   app.register(timetableModule);
   app.register(calendarModule);
   app.register(coursesModule);
-  app.register(spModule);
+  // app.register(spModule);
 
   return app;
 }
