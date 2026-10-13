@@ -88,6 +88,11 @@ export function SpFallbackForm({ kind }: { kind: "attendance" | "marks" }) {
           const { data } = await apiSpRefresh(cookies);
           if (cancelled) return;
           applySpData(data.attendance, data.marks, data.session.cookies);
+          // Refresh worked but portal genuinely has no rows: stay on the form
+          // with a fresh captcha so the user can retry the full login.
+          if (data.attendance.length === 0 && data.marks.length === 0) {
+            await loadCaptcha();
+          }
           return;
         } catch {
           clearSpCookies();

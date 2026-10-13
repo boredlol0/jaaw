@@ -4,7 +4,7 @@ import { spCaptchaHandler, spDiagHandler, spLoginHandler, spRefreshHandler } fro
 
 export async function spRoutes(app: FastifyInstance) {
   app.get("/sp/diag", spDiagHandler);
-  app.post("/sp/captcha", { schema: spCaptchaSchema }, spCaptchaHandler);
+  app.get("/sp/captcha/", { schema: spCaptchaSchema }, spCaptchaHandler);
   app.post("/sp/login", { schema: spLoginSchema }, spLoginHandler);
   app.post("/sp/refresh", { schema: spRefreshSchema }, spRefreshHandler);
 }

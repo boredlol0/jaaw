@@ -188,11 +188,7 @@ function parseMarksOuter(html) {
   const ids = [
     ...html.matchAll(/funViewComponentWiseMarks\s*\(\s*['"]([^'"]+)['"]\s*,\s*['"][^'"]+['"]\s*,\s*['"][^'"]+['"]\s*,\s*([0-9]+)\s*\)/g),
   ];
-  const withIds = out.filter((_, i) => ids[i]);
-  return {
-    subjects: out.map((s, i) => ({ ...s, subjectId: ids[i] ? ids[i][1] : null, status: ids[i] ? ids[i][2] : "2" })),
-    _count: withIds.length,
-  };
+  return out.map((s, i) => ({ ...s, subjectId: ids[i] ? ids[i][1] : null, status: ids[i] ? ids[i][2] : "2" }));
 }
 function parseMarksInner(html) {
   const out = [];
@@ -272,9 +268,10 @@ async function handleCaptcha() {
 }
 
 async function handleLogin(body) {
+  const blob = body.state || body.cdigest || "";
   let st;
   try {
-    st = JSON.parse(unb64url(body.state || ""));
+    st = JSON.parse(unb64url(blob));
     if (!st || typeof st !== "object" || !st.cookies) throw new Error("bad shape");
   } catch {
     return json(
@@ -320,40 +317,98 @@ async function handleLogin(body) {
     loginBody = f.body;
   }
 
-  const [a, m] = await Promise.all([
-    request(jar, ATT_URL).then(async (r) => ({ url: r.url, body: await r.res.text() })),
-    request(jar, MARKS_URL).then(async (r) => ({ url: r.url, body: await r.res.text() })),
-  ]);
-  if (!loggedOut(a.url, a.body) && !loggedOut(m.url, m.body)) {
-    const attendance = parseAttendance(a.body);
-    const outer = parseMarksOuter(m.body);
-    const assess = new Map();
-    await Promise.all(
-      outer.subjects
-        .filter((s) => s.subjectId)
-        .map(async (s) => {
-          const r = await postForm(jar, INNER_URL, { iden: "1", hdnSubjectId: s.subjectId, status: s.status });
-          if (r.res.status === 200) assess.set(s.courseCode, parseMarksInner(await r.res.text()));
-        }),
-    );
-    const marks = outer.subjects.map((s) => ({
-      courseCode: s.courseCode,
-      courseType: "Internal",
-      summary: s.got !== null ? `${s.got}/${s.max}` : "N/A",
-      assessments: assess.get(s.courseCode) ?? [],
-      totalMarksObtained: s.got,
-      totalMarksMaximum: s.max,
-    }));
+  const data = await fetchPortalData(jar);
+  if (data) {
+    const { attendance, marks } = data;
     return json({
       success: true,
+      source: "sp",
       ms: Date.now() - started,
-      jar: jar.names(),
       attendance,
       marks,
+      session: { cookies: jar.object() },
     });
   }
   const f = classify(loginBody);
   return json({ detail: { type: f.type, message: f.message }, jar: jar.names() }, f.status);
+}
+
+async function fetchPortalData(jar) {
+  const [a, m] = await Promise.all([
+    request(jar, ATT_URL).then(async (r) => {
+      let url = r.url,
+        body = await r.res.text();
+      if (/theGR8LoginLoader/i.test(body)) ({ url, body } = await followLoaders(jar, url, body));
+      return { url, body };
+    }),
+    request(jar, MARKS_URL).then(async (r) => {
+      let url = r.url,
+        body = await r.res.text();
+      if (/theGR8LoginLoader/i.test(body)) ({ url, body } = await followLoaders(jar, url, body));
+      return { url, body };
+    }),
+  ]);
+  if (loggedOut(a.url, a.body) || loggedOut(m.url, m.body)) return null;
+  const attendance = parseAttendance(a.body);
+  const subjects = parseMarksOuter(m.body);
+  const assess = new Map();
+  await Promise.all(
+    subjects
+      .filter((s) => s.subjectId)
+      .map(async (s) => {
+        try {
+          const r = await postForm(jar, INNER_URL, { iden: "1", hdnSubjectId: s.subjectId, status: s.status });
+          if (r.res.status === 200) assess.set(s.courseCode, parseMarksInner(await r.res.text()));
+        } catch {}
+      }),
+  );
+  const marks = subjects.map((s) => ({
+    courseCode: s.courseCode,
+    courseType: "Internal",
+    summary: s.got !== null ? `${s.got}/${s.max}` : "N/A",
+    assessments: assess.get(s.courseCode) ?? [],
+    totalMarksObtained: s.got,
+    totalMarksMaximum: s.max,
+  }));
+  const markCodes = new Set(marks.map((x) => x.courseCode.trim().toLowerCase()));
+  for (const c of attendance) {
+    if (!markCodes.has(c.courseCode.trim().toLowerCase())) {
+      marks.push({
+        courseCode: c.courseCode,
+        courseType: "Internal",
+        summary: "N/A",
+        assessments: [],
+        totalMarksObtained: null,
+        totalMarksMaximum: null,
+      });
+    }
+  }
+  return { attendance, marks };
+}
+
+async function handleRefresh(body) {
+  const cookies = body.cookies;
+  if (!cookies || Object.keys(cookies).length === 0) {
+    return json(
+      { detail: { type: "SESSION_EXPIRED", message: "Student Portal session expired. Log in again." } },
+      401,
+    );
+  }
+  const jar = makeJar(cookies);
+  const data = await fetchPortalData(jar);
+  if (!data) {
+    return json(
+      { detail: { type: "SESSION_EXPIRED", message: "Student Portal session expired. Log in again." } },
+      401,
+    );
+  }
+  return json({
+    success: true,
+    source: "sp",
+    attendance: data.attendance,
+    marks: data.marks,
+    session: { cookies: jar.object() },
+  });
 }
 
 async function handleDiag(req) {
@@ -393,12 +448,15 @@ export default {
   async fetch(req) {
     if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
     const url = new URL(req.url);
+    url.pathname = url.pathname.replace(/^\/sp(?=\/|$)/, "");
     try {
       if (req.method === "GET" && url.pathname === "/captcha") return await handleCaptcha();
       if (req.method === "GET" && url.pathname === "/diag") return await handleDiag(req);
       if (req.method === "POST" && url.pathname === "/login") return await handleLogin(await req.json());
+      if (req.method === "POST" && url.pathname === "/refresh")
+        return await handleRefresh(await req.json());
       if (req.method === "GET" && url.pathname === "/")
-        return json({ ok: true, routes: ["GET /captcha", "POST /login", "GET /diag"] });
+        return json({ ok: true, routes: ["GET /captcha", "POST /login", "POST /refresh", "GET /diag"] });
       return json({ detail: "not found" }, 404);
     } catch (e) {
       return json({ detail: String((e && e.message) || e).slice(0, 300) }, 500);

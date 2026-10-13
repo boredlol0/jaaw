@@ -38,7 +38,10 @@ interface CredentialsPayload {
 let cachedApiUrls: string[] | null = null;
 
 const PROD_API_URL = "https://api.jaaw.tosh.cc.cd";
-const LOCAL_API_URL = "http://192.168.1.6:4000";
+const LOCAL_API_URL = "http://127.0.0.1:4000";
+
+/** Student Portal bridge always runs on the Worker (Cloudflare egress), in every env. */
+const SP_API_URL = "https://api.jaaw.tosh.cc.cd";
 
 function getApiUrls(): string[] {
   if (cachedApiUrls) return cachedApiUrls;
@@ -109,8 +112,7 @@ async function apiFetch<T>(
   if (lastError instanceof ApiError) throw lastError;
   throw new ApiError(
     503,
-    "All API servers are unreachable. Please check your connection.",
-    urls[0]
+    "All API servers are unreachable. Please check your connection.",    urls[0]
   );
 }
 
@@ -347,6 +349,36 @@ export async function apiSchedule(creds: CredentialsPayload) {
   return apiFetch<ScheduleResponse>("/schedule", creds);
 }
 
+/**
+ * SP fetch wrapper — always targets the Worker bridge (single URL, all envs).
+ * Same error contract as apiFetch so callers need no changes.
+ */
+async function spFetch<T>(route: string, payload?: unknown): Promise<ApiResult<T>> {
+  const url = `${SP_API_URL}${route}`;
+  const isGet = payload === undefined;
+  let res: Response;
+  try {
+    res = await fetch(url, isGet
+      ? { method: "GET" }
+      : {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+  } catch {
+    throw new ApiError(503, "Student Portal bridge is unreachable. Please check your connection.", url);
+  }
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const detail = (body as { detail?: string }).detail ?? `HTTP ${res.status}`;
+    throw new ApiError(res.status, detail, url);
+  }
+
+  const data = (await res.json()) as T;
+  return { data, url };
+}
+
 export interface SpCaptchaResponse {
   success: boolean;
   cdigest: string;
@@ -371,19 +403,17 @@ export interface SpPayload {
 }
 
 export async function apiSpCaptcha() {
-  return apiFetch<SpCaptchaResponse>("/sp/captcha", {} as CredentialsPayload);
+  return spFetch<SpCaptchaResponse>("/sp/captcha");
 }
 
 export async function apiSpLogin(creds: SpPayload) {
-  const result = await apiFetch<SpLoginResponse>("/sp/login", creds as CredentialsPayload);
+  const result = await spFetch<SpLoginResponse>("/sp/login", creds);
   result.data.marks = normalizeMarks(result.data.marks);
   return result;
 }
 
 export async function apiSpRefresh(cookies: Record<string, string>) {
-  const result = await apiFetch<SpLoginResponse>("/sp/refresh", {
-    cookies,
-  } as unknown as CredentialsPayload);
+  const result = await spFetch<SpLoginResponse>("/sp/refresh", { cookies });
   result.data.marks = normalizeMarks(result.data.marks);
   return result;
 }
