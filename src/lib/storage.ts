@@ -3,6 +3,16 @@ const XOR_KEY = "jaaw_xk";
 
 
 
+/** Obfuscate a string for localStorage (same scheme as the stored session). */
+export function encodeLocal(str: string): string {
+  return xorEncode(str);
+}
+
+/** Reverse {@link encodeLocal}. Returns "" if the input can't be decoded. */
+export function decodeLocal(encoded: string): string {
+  return xorDecode(encoded);
+}
+
 function xorEncode(str: string): string {
   let out = "";
   for (let i = 0; i < str.length; i++) {

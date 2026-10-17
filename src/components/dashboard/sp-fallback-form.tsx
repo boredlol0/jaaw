@@ -10,41 +10,85 @@ import {
   type AttendanceRecord,
   type MarkRecord,
 } from "@/lib/api";
-import { loadSession, updateDashSection } from "@/lib/storage";
+import { decodeLocal, encodeLocal, loadSession, updateDashSection } from "@/lib/storage";
 import { QK } from "@/lib/queries";
 
 const SP_KEY = "jaaw_sp";
 
-function loadSpCookies(): Record<string, string> | null {
+interface SpStored {
+  cookies?: Record<string, string>;
+  netid?: string;
+  password?: string;
+  cachedAt?: number;
+}
+
+function loadSp(): SpStored | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(SP_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { cookies?: Record<string, string> };
-    return parsed.cookies && Object.keys(parsed.cookies).length > 0 ? parsed.cookies : null;
+    return JSON.parse(raw) as SpStored;
   } catch {
     return null;
   }
 }
 
-function saveSpCookies(cookies: Record<string, string>): void {
+function saveSp(patch: Partial<SpStored>): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(SP_KEY, JSON.stringify({ cookies, cachedAt: Date.now() }));
+  const current = loadSp() ?? {};
+  localStorage.setItem(
+    SP_KEY,
+    JSON.stringify({ ...current, ...patch, cachedAt: Date.now() }),
+  );
 }
 
+function loadSpCookies(): Record<string, string> | null {
+  const cookies = loadSp()?.cookies;
+  return cookies && Object.keys(cookies).length > 0 ? cookies : null;
+}
+
+function saveSpCookies(cookies: Record<string, string>): void {
+  saveSp({ cookies });
+}
+
+/** Drop only the session; stored credentials stay so they can be pre-filled. */
 function clearSpCookies(): void {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(SP_KEY);
+  const stored = loadSp();
+  if (!stored) return;
+  delete stored.cookies;
+  localStorage.setItem(SP_KEY, JSON.stringify(stored));
 }
+
+function loadSpCreds(): { netid: string; password: string } | null {
+  const stored = loadSp();
+  if (!stored?.netid) return null;
+  return {
+    netid: decodeLocal(stored.netid),
+    password: stored.password ? decodeLocal(stored.password) : "",
+  };
+}
+
+function saveSpCreds(netid: string, password: string): void {
+  saveSp({ netid: encodeLocal(netid), password: encodeLocal(password) });
+}
+
+/** User-facing copy for the Student Portal login failure types the bridge returns. */
+const SP_LOGIN_ERROR_COPY: Record<string, string> = {
+  WRONG_CAPTCHA: "Invalid captcha. Please try again.",
+  INVALID_CREDENTIALS: "Invalid credentials. Please try again.",
+};
 
 function errorMessage(err: unknown): string {
   if (err instanceof ApiError) {
     const detail = err.detail as unknown;
     if (detail && typeof detail === "object") {
+      const type = (detail as { type?: unknown }).type;
+      if (typeof type === "string") {
+        return SP_LOGIN_ERROR_COPY[type] ?? "Something went wrong while logging in. Please try again.";
+      }
       const message = (detail as { message?: unknown }).message;
       if (typeof message === "string" && message) return message;
-      const type = (detail as { type?: unknown }).type;
-      if (typeof type === "string" && type) return type;
     }
     if (typeof detail === "string" && detail) return detail;
     return err.message || "Something went wrong.";
@@ -82,6 +126,12 @@ export function SpFallbackForm({ kind }: { kind: "attendance" | "marks" }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // Pre-fill saved SP credentials so only the captcha has to be typed.
+      const creds = loadSpCreds();
+      if (creds) {
+        setNetid(creds.netid);
+        setPassword(creds.password);
+      }
       const cookies = loadSpCookies();
       if (cookies) {
         try {
@@ -125,6 +175,7 @@ export function SpFallbackForm({ kind }: { kind: "attendance" | "marks" }) {
     if (phase === "submitting" || !cdigest) return;
     setPhase("submitting");
     setError(null);
+    saveSpCreds(netid.trim(), password);
     try {
       const { data } = await apiSpLogin({
         netid: netid.trim(),
@@ -134,9 +185,11 @@ export function SpFallbackForm({ kind }: { kind: "attendance" | "marks" }) {
       });
       applySpData(data.attendance, data.marks, data.session.cookies);
     } catch (err) {
-      setError(errorMessage(err));
+      const msg = errorMessage(err);
       setCaptcha("");
       await loadCaptcha();
+      // loadCaptcha clears the error, so restore the login failure last.
+      setError(msg);
     } finally {
       setPhase("ready");
     }
@@ -188,19 +241,19 @@ export function SpFallbackForm({ kind }: { kind: "attendance" | "marks" }) {
           <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#8d8d95]">
             Captcha
           </span>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             {captchaImg ? (
               <button
                 type="button"
                 onClick={loadCaptcha}
                 title="Refresh captcha"
-                className="h-11 shrink-0 overflow-hidden rounded-xl border border-white/10"
+                className="h-11 max-w-full shrink-0 self-start overflow-hidden rounded-xl border border-white/10"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={captchaImg} alt="Student Portal captcha" className="h-full" />
+                <img src={captchaImg} alt="Student Portal captcha" className="h-full w-auto max-w-full" />
               </button>
             ) : (
-              <div className="flex h-11 shrink-0 items-center rounded-xl border border-white/10 px-4 text-[12px] text-[#8d8d95]">
+              <div className="flex h-11 shrink-0 items-center self-start rounded-xl border border-white/10 px-4 text-[12px] text-[#8d8d95]">
                 {phase === "loading" ? "Loading…" : "Unavailable"}
               </div>
             )}
@@ -211,7 +264,7 @@ export function SpFallbackForm({ kind }: { kind: "attendance" | "marks" }) {
               placeholder="Enter captcha"
               value={captcha}
               onChange={(e) => setCaptcha(e.target.value)}
-              className={`${inputClass} flex-1`}
+              className={`${inputClass} w-full min-w-0 sm:flex-1`}
             />
           </div>
         </div>
