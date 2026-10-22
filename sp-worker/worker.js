@@ -7,6 +7,10 @@ const ATT_URL = `${BASE}/students/report/studentAttendanceDetails.jsp`;
 const MARKS_URL = `${BASE}/students/report/studentInternalMarkDetails.jsp`;
 const INNER_URL = `${BASE}/students/report/studentInternalMarkDetailsInner.jsp`;
 const HOST = "sp.srmist.edu.in";
+const OCR_URL = "https://toshlol-glm-ocr-captcha.hf.space/api/captcha";
+const OCR_TIMEOUT_MS = 45000;
+const OCR_ATTEMPTS = 2;
+const PLAUSIBLE_CAPTCHA = /^[A-Za-z0-9]{4,12}$/;
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36";
 
@@ -234,12 +238,12 @@ function classify(body) {
   return { status: 401, type: "LOGIN_FAILED", message: text || "login failed" };
 }
 
-async function handleCaptcha() {
+async function fetchCaptchaState() {
   const jar = makeJar();
   const createdAt = Date.now();
   const { res } = await request(jar, LOGIN_PAGE);
   const page = parseLoginPage(await res.text());
-  if (!page.nonce || !page.captchaPath) return json({ detail: "captcha unavailable" }, 503);
+  if (!page.nonce || !page.captchaPath) return { error: "captcha unavailable" };
   const curl = new URL(page.captchaPath, "https://sp.srmist.edu.in").toString();
   const img = await request(jar, curl, {
     headers: {
@@ -250,53 +254,154 @@ async function handleCaptcha() {
   });
   const buf = new Uint8Array(await img.res.arrayBuffer());
   const mime = (img.res.headers.get("content-type") || "image/png").split(";")[0].trim();
+  if (!/^image\//i.test(mime)) throw new Error(`captcha endpoint returned "${mime}" instead of an image`);
   let bin = "";
   for (let i = 0; i < buf.length; i += 8192)
     bin += String.fromCharCode(...buf.subarray(i, i + 8192));
-  const state = b64url(
-    JSON.stringify({
-      cookies: jar.object(),
-      nonce: page.nonce,
-      dField: page.dField,
-      cField: page.cField,
-      delim: page.delim,
-      fields: page.fields,
-      createdAt,
-    }),
-  );
-  return json({ success: true, cdigest: state, image: `data:${mime};base64,${btoa(bin)}` });
+  const state = {
+    cookies: jar.object(),
+    nonce: page.nonce,
+    dField: page.dField,
+    cField: page.cField,
+    delim: page.delim,
+    fields: page.fields,
+    createdAt,
+  };
+  return { jar, page, state, image: `data:${mime};base64,${btoa(bin)}` };
 }
 
-async function handleLogin(body) {
-  const blob = body.state || body.cdigest || "";
-  let st;
+async function handleCaptcha() {
+  let cap;
   try {
-    st = JSON.parse(unb64url(blob));
-    if (!st || typeof st !== "object" || !st.cookies) throw new Error("bad shape");
-  } catch {
-    return json(
-      {
-        detail: {
-          type: "BAD_STATE",
-          message: "State is corrupted or truncated — GET /captcha fresh and send the full cdigest untouched.",
-        },
-      },
-      400,
-    );
+    cap = await fetchCaptchaState();
+  } catch (e) {
+    return json({ detail: `captcha fetch failed: ${String((e && e.message) || e).slice(0, 200)}` }, 502);
   }
+  if (cap.error) return json({ detail: "captcha unavailable" }, 503);
+  return json({ success: true, cdigest: b64url(JSON.stringify(cap.state)), image: cap.image });
+}
+
+/**
+ * Solve a captcha image with the GLM-OCR Space (zai-org/GLM-OCR).
+ * Uses the HF_TOKEN secret so the call is billed to that token owner's ZeroGPU quota
+ * instead of the Space owner's shared quota.
+ */
+async function ocrCaptcha(env, imageDataUrl) {
+  const headers = { "content-type": "application/json" };
+  const token = env && env.HF_TOKEN;
+  if (token) headers.authorization = `Bearer ${token}`;
+  const res = await fetch(OCR_URL, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ image: imageDataUrl, prompt: "Text Recognition:", max_new_tokens: 24 }),
+    signal: AbortSignal.timeout(OCR_TIMEOUT_MS),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    let hint = "";
+    if (res.status === 429) {
+      hint = token
+        ? " ZeroGPU quota exhausted - the HF_TOKEN owner is out of daily GPU time."
+        : " No HF_TOKEN secret is set, so the call fell back to the Space owner's shared quota.";
+    }
+    throw new Error(`GLM-OCR Space returned ${res.status}.${hint} ${body.slice(0, 200)}`.trim());
+  }
+  const data = await res.json();
+  const text = String((data && data.text) ?? "")
+    .split("\n")[0]
+    .replace(/\s+/g, "");
+  if (!text) throw new Error("GLM-OCR returned no text for the captcha image");
+  return text;
+}
+
+/**
+ * Fetch a portal captcha and solve it with GLM-OCR.
+ * A fresh captcha is pulled for every attempt, so retries never consume a portal
+ * login attempt — only the single final submission does.
+ */
+async function solveCaptchaWithOcr(env) {
+  let ocrError = null;
+  for (let attempt = 1; attempt <= OCR_ATTEMPTS; attempt++) {
+    let cap;
+    try {
+      cap = await fetchCaptchaState();
+    } catch (e) {
+      throw Object.assign(new Error(`Could not fetch the portal captcha: ${String((e && e.message) || e).slice(0, 200)}`), {
+        type: "CAPTCHA_FETCH_FAILED",
+      });
+    }
+    if (cap.error) {
+      throw Object.assign(new Error("The portal did not expose a captcha image."), { type: "CAPTCHA_UNAVAILABLE" });
+    }
+    try {
+      const text = await ocrCaptcha(env, cap.image);
+      if (PLAUSIBLE_CAPTCHA.test(text) || attempt === OCR_ATTEMPTS) return { text, state: cap.state };
+      ocrError = new Error(`OCR returned an implausible captcha: "${text}"`);
+    } catch (e) {
+      ocrError = e;
+      if (attempt === OCR_ATTEMPTS) break;
+    }
+  }
+  throw Object.assign(ocrError || new Error("captcha OCR failed"), { type: "OCR_FAILED" });
+}
+
+async function handleLogin(body, env) {
   const netid = (body.username || body.netid || "").trim().split("@")[0];
-  if (!netid || !body.password || !body.captcha) return json({ detail: "missing fields" }, 400);
+  if (!netid || !body.password) return json({ detail: "missing fields" }, 400);
+
+  let st;
+  let captchaAnswer = (body.captcha || "").trim();
+
+  if (captchaAnswer) {
+    // Explicit path: caller solved the captcha and sent the captcha state back.
+    const blob = body.state || body.cdigest || "";
+    try {
+      st = JSON.parse(unb64url(blob));
+      if (!st || typeof st !== "object" || !st.cookies) throw new Error("bad shape");
+    } catch {
+      return json(
+        {
+          detail: {
+            type: "BAD_STATE",
+            message: "State is corrupted or truncated — GET /captcha fresh and send the full cdigest untouched.",
+          },
+        },
+        400,
+      );
+    }
+  } else {
+    // Self-service path: fetch a fresh captcha from the portal and solve it with GLM-OCR.
+    let solved;
+    try {
+      solved = await solveCaptchaWithOcr(env);
+    } catch (e) {
+      const type = (e && e.type) || "OCR_FAILED";
+      const status = type === "CAPTCHA_UNAVAILABLE" ? 503 : 502;
+      return json(
+        {
+          detail: {
+            type,
+            message: `Captcha solving failed: ${String((e && e.message) || e).slice(0, 300)}`,
+          },
+        },
+        status,
+      );
+    }
+    st = solved.state;
+    captchaAnswer = solved.text;
+  }
+
   const jar = makeJar(st.cookies);
   const elapsed = Math.max(3 + Math.floor(Math.random() * 3), Math.floor((Date.now() - st.createdAt) / 1000));
   const payload = {};
   for (const n of st.fields) payload[n] = "";
   payload.username = netid;
   payload.password = body.password;
-  payload.captcha = body.captcha;
+  payload.captcha = captchaAnswer;
   payload.fpPayload = "";
   payload.fpToken = "";
   payload.recaptchaToken = "";
-  payload.telemetryPayload = b64(JSON.stringify(forgedTelemetry(st.createdAt, body.captcha.trim().length)));
+  payload.telemetryPayload = b64(JSON.stringify(forgedTelemetry(st.createdAt, captchaAnswer.length)));
   payload[st.dField] = b64(HOST.split("").reverse().join(""));
   payload[st.cField] = b64(`${elapsed}${st.delim}3`);
 
@@ -359,7 +464,7 @@ async function fetchPortalData(jar) {
         try {
           const r = await postForm(jar, INNER_URL, { iden: "1", hdnSubjectId: s.subjectId, status: s.status });
           if (r.res.status === 200) assess.set(s.courseCode, parseMarksInner(await r.res.text()));
-        } catch {}
+        } catch { }
       }),
   );
   const marks = subjects.map((s) => ({
@@ -417,7 +522,7 @@ async function handleDiag(req) {
   try {
     const r = await fetch("https://api.ipify.org?format=json");
     egressIp = (await r.json()).ip ?? null;
-  } catch {}
+  } catch { }
   const jar = makeJar();
   const t0 = Date.now();
   let portalDate = null,
@@ -445,18 +550,27 @@ async function handleDiag(req) {
 }
 
 export default {
-  async fetch(req) {
+  async fetch(req, env) {
     if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
     const url = new URL(req.url);
     url.pathname = url.pathname.replace(/^\/sp(?=\/|$)/, "");
     try {
       if (req.method === "GET" && url.pathname === "/captcha") return await handleCaptcha();
       if (req.method === "GET" && url.pathname === "/diag") return await handleDiag(req);
-      if (req.method === "POST" && url.pathname === "/login") return await handleLogin(await req.json());
+      if (req.method === "POST" && url.pathname === "/login") return await handleLogin(await req.json(), env);
       if (req.method === "POST" && url.pathname === "/refresh")
         return await handleRefresh(await req.json());
       if (req.method === "GET" && url.pathname === "/")
-        return json({ ok: true, routes: ["GET /captcha", "POST /login", "POST /refresh", "GET /diag"] });
+        return json({
+          ok: true,
+          routes: [
+            "GET /captcha",
+            "POST /login (username+password — captcha solved by GLM-OCR)",
+            "POST /login (username+password+captcha+cdigest — caller solves it)",
+            "POST /refresh",
+            "GET /diag",
+          ],
+        });
       return json({ detail: "not found" }, 404);
     } catch (e) {
       return json({ detail: String((e && e.message) || e).slice(0, 300) }, 500);

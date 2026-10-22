@@ -1,0 +1,230 @@
+openapi: 3.1.0
+info:
+  title: GLM-OCR Captcha Solver API
+  version: 1.0.0
+  summary: REST API for zai-org/GLM-OCR — base64 images in, recognised text out.
+  description: |
+    `zai-org/GLM-OCR` (1.3B multimodal OCR model) hosted on Hugging Face ZeroGPU.
+
+    **Image input** — the `image` field accepts any of:
+    * a base64 data URL — `data:image/png;base64,<payload>`
+    * a raw base64 payload — `<payload>`
+    * an `http(s)` image URL — `https://example.com/captcha.png` (public addresses only)
+
+    **Quota** — every call reserves GPU time on Hugging Face ZeroGPU. Authenticate with a
+    Hugging Face token (`Authorization: Bearer hf_...`) so the call is billed against the
+    caller's own daily quota instead of the Space owner's (free tier: a few GPU-minutes/day).
+  license:
+    name: MIT
+    identifier: MIT
+  contact:
+    name: toshlol
+    url: https://huggingface.co/toshlol
+
+servers:
+  - url: https://toshlol-glm-ocr-captcha.hf.space
+    description: Hugging Face Space (ZeroGPU)
+
+security:
+  - hfToken: []
+
+tags:
+  - name: ocr
+    description: OCR / captcha solving
+  - name: meta
+    description: Service metadata
+
+paths:
+  /api/captcha:
+    post:
+      tags: [ocr]
+      operationId: solveCaptcha
+      summary: Solve a captcha (or OCR an image) with GLM-OCR
+      description: |
+        Accepts a base64 image and returns the recognised text.
+
+        The image is upscaled so its shorter side is at least `min_side` pixels before
+        inference — GLM-OCR's vision tower reads small captchas more accurately when they
+        are enlarged.
+      security:
+        - hfToken: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaptchaRequest"
+            examples:
+              dataUrl:
+                summary: Base64 data URL
+                value:
+                  image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg=="
+                  prompt: "Text Recognition:"
+              rawBase64:
+                summary: Raw base64 payload
+                value:
+                  image: "iVBORw0KGgoAAAANSUhEUg=="
+              url:
+                summary: Public image URL
+                value:
+                  image: "https://example.com/captcha.png"
+      responses:
+        "200":
+          description: Text recognised.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaptchaResponse"
+        "400":
+          description: The image could not be decoded (bad base64, undecodable image, non-public URL).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          description: The image exceeds the maximum allowed size.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: The request body failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: The caller's ZeroGPU quota is exhausted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/health:
+    get:
+      tags: [meta]
+      operationId: health
+      summary: Readiness probe
+      security:
+        - hfToken: []
+        - {}
+      responses:
+        "200":
+          description: Service status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+
+  /api/schema:
+    get:
+      tags: [meta]
+      operationId: schema
+      summary: Machine-readable description of the API
+      security:
+        - hfToken: []
+        - {}
+      responses:
+        "200":
+          description: Endpoint summary.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+components:
+  securitySchemes:
+    hfToken:
+      type: http
+      scheme: bearer
+      bearerFormat: hf
+      description: |
+        Optional Hugging Face access token. Recommended: authenticated calls use the
+        caller's own ZeroGPU quota rather than the Space owner's.
+
+  schemas:
+    CaptchaRequest:
+      type: object
+      required: [image]
+      properties:
+        image:
+          type: string
+          description: Base64 data URL, raw base64 payload, or a public http(s) image URL.
+          examples:
+            - "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg=="
+        prompt:
+          type: string
+          default: "Text Recognition:"
+          description: GLM-OCR task prompt.
+        max_new_tokens:
+          type: integer
+          minimum: 1
+          maximum: 4096
+          default: 64
+          description: Generation budget.
+        strip:
+          type: boolean
+          default: true
+          description: Trim surrounding whitespace from the result.
+        min_side:
+          type: integer
+          minimum: 0
+          maximum: 4096
+          default: 336
+          description: Upscale so the shorter side is at least this many pixels (0 disables).
+
+    CaptchaResponse:
+      type: object
+      required: [text, raw_text, prompt, model, elapsed_ms, width, height]
+      properties:
+        text:
+          type: string
+          description: Recognised text, trimmed.
+          examples: ["A7bK9"]
+        raw_text:
+          type: string
+          description: Untrimmed model output.
+        prompt:
+          type: string
+        model:
+          type: string
+          examples: ["zai-org/GLM-OCR"]
+        elapsed_ms:
+          type: integer
+          description: Server-side inference time in milliseconds.
+        width:
+          type: integer
+          description: Width of the image actually sent to the model.
+        height:
+          type: integer
+          description: Height of the image actually sent to the model.
+
+    Health:
+      type: object
+      properties:
+        status:
+          type: string
+          examples: ["ok"]
+        model:
+          type: string
+        device:
+          type: string
+        dtype:
+          type: string
+        gpu:
+          type: boolean
+        zero_gpu:
+          type: boolean
+        max_image_bytes:
+          type: integer
+        default_prompt:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: Human-readable explanation of the failure.

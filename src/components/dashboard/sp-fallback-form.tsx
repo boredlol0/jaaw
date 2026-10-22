@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ApiError,
@@ -77,6 +77,10 @@ function saveSpCreds(netid: string, password: string): void {
 const SP_LOGIN_ERROR_COPY: Record<string, string> = {
   WRONG_CAPTCHA: "Invalid captcha. Please try again.",
   INVALID_CREDENTIALS: "Invalid credentials. Please try again.",
+  OCR_FAILED: "Automatic captcha solving is unavailable right now — please enter the captcha below.",
+  CAPTCHA_UNAVAILABLE: "The Student Portal did not serve a captcha — please try again.",
+  CAPTCHA_FETCH_FAILED: "Could not reach the Student Portal captcha — please try again.",
+  BAD_STATE: "The captcha session expired — please try again.",
 };
 
 function errorMessage(err: unknown): string {
@@ -106,25 +110,40 @@ export function SpFallbackForm({ kind }: { kind: "attendance" | "marks" }) {
   const [netid, setNetid] = useState("");
   const [password, setPassword] = useState("");
   const [captcha, setCaptcha] = useState("");
-  const [phase, setPhase] = useState<"loading" | "ready" | "submitting">("loading");
+  const [phase, setPhase] = useState<"loading" | "refreshing" | "ready" | "submitting">("loading");
   const [error, setError] = useState<string | null>(null);
+  /** Why the automatic (captcha-less) sign-in didn't work, if it was attempted. */
+  const [autoError, setAutoError] = useState<string | null>(null);
+  /** True while the component is mounted — guards setState after unmount. */
+  const aliveRef = useRef(true);
+  /** Ensures the automatic sign-in is fired at most once per mount. */
+  const startedRef = useRef(false);
 
-  async function loadCaptcha() {
-    setPhase("loading");
+  async function loadCaptcha(opts?: { silent?: boolean }) {
+    if (!opts?.silent) setPhase("loading");
     setError(null);
     try {
       const { data } = await apiSpCaptcha();
+      if (!aliveRef.current) return;
       setCaptchaImg(data.image);
       setCdigest(data.cdigest);
       setPhase("ready");
     } catch (err) {
+      if (!aliveRef.current) return;
       setError(errorMessage(err));
       setPhase("ready");
     }
   }
 
   useEffect(() => {
-    let cancelled = false;
+    // StrictMode remounts effects in dev, and a login POST is not idempotent —
+    // a double sign-in would burn two Student Portal attempts (the portal allows
+    // three). `aliveRef` is restored on the re-run so the first attempt can still
+    // apply its result; `startedRef` stops a second attempt from being fired.
+    aliveRef.current = true;
+    if (startedRef.current) return;
+    startedRef.current = true;
+
     (async () => {
       // Pre-fill saved SP credentials so only the captcha has to be typed.
       const creds = loadSpCreds();
@@ -132,11 +151,13 @@ export function SpFallbackForm({ kind }: { kind: "attendance" | "marks" }) {
         setNetid(creds.netid);
         setPassword(creds.password);
       }
+
+      // 1) Reuse the stored Student Portal session while it still works.
       const cookies = loadSpCookies();
       if (cookies) {
         try {
           const { data } = await apiSpRefresh(cookies);
-          if (cancelled) return;
+          if (!aliveRef.current) return;
           applySpData(data.attendance, data.marks, data.session.cookies);
           // Refresh worked but portal genuinely has no rows: stay on the form
           // with a fresh captcha so the user can retry the full login.
@@ -148,11 +169,35 @@ export function SpFallbackForm({ kind }: { kind: "attendance" | "marks" }) {
           clearSpCookies();
         }
       }
-      if (cancelled) return;
+      if (!aliveRef.current) return;
+
+      // 2) The session is gone — sign in again and let the bridge solve the captcha.
+      if (creds?.netid && creds.password) {
+        setPhase("refreshing");
+        try {
+          const { data } = await apiSpLogin({
+            netid: creds.netid.trim(),
+            password: creds.password,
+          });
+          if (!aliveRef.current) return;
+          applySpData(data.attendance, data.marks, data.session.cookies);
+          if (data.attendance.length === 0 && data.marks.length === 0) {
+            await loadCaptcha();
+          }
+          return;
+        } catch (err) {
+          if (!aliveRef.current) return;
+          setAutoError(errorMessage(err));
+        }
+      }
+
+      // 3) Fall back to the manual captcha form.
+      if (!aliveRef.current) return;
       await loadCaptcha();
     })();
+
     return () => {
-      cancelled = true;
+      aliveRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -175,6 +220,7 @@ export function SpFallbackForm({ kind }: { kind: "attendance" | "marks" }) {
     if (phase === "submitting" || !cdigest) return;
     setPhase("submitting");
     setError(null);
+    setAutoError(null);
     saveSpCreds(netid.trim(), password);
     try {
       const { data } = await apiSpLogin({
@@ -187,12 +233,34 @@ export function SpFallbackForm({ kind }: { kind: "attendance" | "marks" }) {
     } catch (err) {
       const msg = errorMessage(err);
       setCaptcha("");
-      await loadCaptcha();
+      // Keep the form on screen while the next captcha is fetched.
+      await loadCaptcha({ silent: true });
       // loadCaptcha clears the error, so restore the login failure last.
       setError(msg);
     } finally {
       setPhase("ready");
     }
+  }
+
+  if (phase === "loading" || phase === "refreshing") {
+    return (
+      <div className="relative z-2 rounded-[22px] border border-white/10 bg-white/4 p-6 sm:p-8">
+        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#e7a63f]">
+          Student Portal fallback
+        </p>
+        <h2 className="mt-3 font-[Unbounded,sans-serif] text-xl font-bold leading-snug text-[#f4f2ea]">
+          {phase === "refreshing" ? "Restoring your session" : "Connecting to Student Portal"}
+        </h2>
+        <div className="mt-6 flex items-center gap-3">
+          <span className="size-4 shrink-0 animate-spin rounded-full border-2 border-[#e7a63f]/25 border-t-[#e7a63f]" />
+          <p className="text-[13px] leading-relaxed text-[#8d8d95]">
+            {phase === "refreshing"
+              ? "Your Student Portal session expired. Signing you back in and solving the captcha automatically…"
+              : "Checking your Student Portal session…"}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -211,6 +279,12 @@ export function SpFallbackForm({ kind }: { kind: "attendance" | "marks" }) {
           ? "Academia returned no attendance rows. Enter your Student Portal credentials below to fetch attendance from SP instead."
           : "Academia returned no mark rows. Enter your Student Portal credentials below to fetch marks from SP instead."}
       </p>
+
+      {autoError && (
+        <p className="mt-4 rounded-xl border border-[#e7a63f]/25 bg-[#e7a63f]/8 px-4 py-3 text-[13px] leading-relaxed text-[#e7a63f]">
+          Automatic sign-in didn&apos;t work — {autoError}
+        </p>
+      )}
 
       <div className="mt-6 flex flex-col gap-4">
         <label className="flex flex-col gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#8d8d95]">
@@ -245,7 +319,7 @@ export function SpFallbackForm({ kind }: { kind: "attendance" | "marks" }) {
             {captchaImg ? (
               <button
                 type="button"
-                onClick={loadCaptcha}
+                onClick={() => loadCaptcha()}
                 title="Refresh captcha"
                 className="h-11 max-w-full shrink-0 self-start overflow-hidden rounded-xl border border-white/10"
               >
@@ -254,7 +328,7 @@ export function SpFallbackForm({ kind }: { kind: "attendance" | "marks" }) {
               </button>
             ) : (
               <div className="flex h-11 shrink-0 items-center self-start rounded-xl border border-white/10 px-4 text-[12px] text-[#8d8d95]">
-                {phase === "loading" ? "Loading…" : "Unavailable"}
+                Unavailable
               </div>
             )}
             <input
