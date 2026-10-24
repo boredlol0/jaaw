@@ -22,6 +22,7 @@ import {
 import { loadSession, saveSession, updateDashData, clearSession } from "./storage";
 import type { StoredDashData, StoredSession } from "./storage";
 import { processLaunchUpdates } from "./updates";
+import { restoreSp } from "./sp";
 
 export const QK = {
   dashboard: (username: string) => ["dashboard", username] as const,
@@ -240,9 +241,26 @@ export function useRefreshMutation(onSetDash?: (dash: StoredDashData) => void) {
   return useMutation({
     mutationFn: async () => {
       if (!session) throw new Error("No session");
-      try { const { data } = await apiRefresh(getCreds(session));
-      mergeCookies(session, data.session.cookies);
-      return data; } catch (e) { handleAuthError(e); }
+      try {
+        const { data } = await apiRefresh(getCreds(session));
+        mergeCookies(session, data.session.cookies);
+        let attendance = data.attendance;
+        let marks = data.marks;
+        if (attendance.length === 0 || marks.length === 0) {
+          const { data: sp } = await restoreSp();
+          if (sp) {
+            if (attendance.length === 0 && sp.attendance.length > 0) {
+              attendance = sp.attendance;
+            }
+            if (marks.length === 0 && sp.marks.length > 0) {
+              marks = sp.marks;
+            }
+          }
+        }
+        return { ...data, attendance, marks };
+      } catch (e) {
+        handleAuthError(e);
+      }
     },
     onSuccess: (data) => {
       const stored = loadSession();

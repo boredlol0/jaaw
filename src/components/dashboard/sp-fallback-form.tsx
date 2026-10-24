@@ -6,74 +6,14 @@ import {
   ApiError,
   apiSpCaptcha,
   apiSpLogin,
-  apiSpRefresh,
   type AttendanceRecord,
   type MarkRecord,
 } from "@/lib/api";
-import { decodeLocal, encodeLocal, loadSession, updateDashSection } from "@/lib/storage";
+import { loadSession } from "@/lib/storage";
+import { processSectionsUpdate } from "@/lib/updates";
+import { loadSpCreds, restoreSp, saveSpCreds, saveSpCookies } from "@/lib/sp";
 import { QK } from "@/lib/queries";
 
-const SP_KEY = "jaaw_sp";
-
-interface SpStored {
-  cookies?: Record<string, string>;
-  netid?: string;
-  password?: string;
-  cachedAt?: number;
-}
-
-function loadSp(): SpStored | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(SP_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as SpStored;
-  } catch {
-    return null;
-  }
-}
-
-function saveSp(patch: Partial<SpStored>): void {
-  if (typeof window === "undefined") return;
-  const current = loadSp() ?? {};
-  localStorage.setItem(
-    SP_KEY,
-    JSON.stringify({ ...current, ...patch, cachedAt: Date.now() }),
-  );
-}
-
-function loadSpCookies(): Record<string, string> | null {
-  const cookies = loadSp()?.cookies;
-  return cookies && Object.keys(cookies).length > 0 ? cookies : null;
-}
-
-function saveSpCookies(cookies: Record<string, string>): void {
-  saveSp({ cookies });
-}
-
-/** Drop only the session; stored credentials stay so they can be pre-filled. */
-function clearSpCookies(): void {
-  if (typeof window === "undefined") return;
-  const stored = loadSp();
-  if (!stored) return;
-  delete stored.cookies;
-  localStorage.setItem(SP_KEY, JSON.stringify(stored));
-}
-
-function loadSpCreds(): { netid: string; password: string } | null {
-  const stored = loadSp();
-  if (!stored?.netid) return null;
-  return {
-    netid: decodeLocal(stored.netid),
-    password: stored.password ? decodeLocal(stored.password) : "",
-  };
-}
-
-function saveSpCreds(netid: string, password: string): void {
-  saveSp({ netid: encodeLocal(netid), password: encodeLocal(password) });
-}
-
-/** User-facing copy for the Student Portal login failure types the bridge returns. */
 const SP_LOGIN_ERROR_COPY: Record<string, string> = {
   WRONG_CAPTCHA: "Invalid captcha. Please try again.",
   INVALID_CREDENTIALS: "Invalid credentials. Please try again.",
@@ -136,63 +76,28 @@ export function SpFallbackForm({ kind }: { kind: "attendance" | "marks" }) {
   }
 
   useEffect(() => {
-    // StrictMode remounts effects in dev, and a login POST is not idempotent —
-    // a double sign-in would burn two Student Portal attempts (the portal allows
-    // three). `aliveRef` is restored on the re-run so the first attempt can still
-    // apply its result; `startedRef` stops a second attempt from being fired.
     aliveRef.current = true;
     if (startedRef.current) return;
     startedRef.current = true;
 
     (async () => {
-      // Pre-fill saved SP credentials so only the captcha has to be typed.
       const creds = loadSpCreds();
       if (creds) {
         setNetid(creds.netid);
         setPassword(creds.password);
       }
 
-      // 1) Reuse the stored Student Portal session while it still works.
-      const cookies = loadSpCookies();
-      if (cookies) {
-        try {
-          const { data } = await apiSpRefresh(cookies);
-          if (!aliveRef.current) return;
-          applySpData(data.attendance, data.marks, data.session.cookies);
-          // Refresh worked but portal genuinely has no rows: stay on the form
-          // with a fresh captcha so the user can retry the full login.
-          if (data.attendance.length === 0 && data.marks.length === 0) {
-            await loadCaptcha();
-          }
-          return;
-        } catch {
-          clearSpCookies();
-        }
-      }
+      setPhase("loading");
+      const { data: restored, error } = await restoreSp((stage) => {
+        if (stage === "login" && aliveRef.current) setPhase("refreshing");
+      });
       if (!aliveRef.current) return;
-
-      // 2) The session is gone — sign in again and let the bridge solve the captcha.
-      if (creds?.netid && creds.password) {
-        setPhase("refreshing");
-        try {
-          const { data } = await apiSpLogin({
-            netid: creds.netid.trim(),
-            password: creds.password,
-          });
-          if (!aliveRef.current) return;
-          applySpData(data.attendance, data.marks, data.session.cookies);
-          if (data.attendance.length === 0 && data.marks.length === 0) {
-            await loadCaptcha();
-          }
-          return;
-        } catch (err) {
-          if (!aliveRef.current) return;
-          setAutoError(errorMessage(err));
-        }
+      if (restored) {
+        applySpData(restored.attendance, restored.marks);
+        if (restored.empty) await loadCaptcha();
+        return;
       }
-
-      // 3) Fall back to the manual captcha form.
-      if (!aliveRef.current) return;
+      if (error) setAutoError(errorMessage(error));
       await loadCaptcha();
     })();
 
@@ -205,11 +110,10 @@ export function SpFallbackForm({ kind }: { kind: "attendance" | "marks" }) {
   function applySpData(
     attendance: AttendanceRecord[],
     marks: MarkRecord[],
-    cookies: Record<string, string>,
+    cookies?: Record<string, string>,
   ) {
-    saveSpCookies(cookies);
-    updateDashSection("attendance", attendance);
-    updateDashSection("marks", marks);
+    if (cookies) saveSpCookies(cookies);
+    processSectionsUpdate({ attendance, marks });
     const username = loadSession()?.session.username ?? "none";
     queryClient.setQueryData(QK.attendance(username), attendance);
     queryClient.setQueryData(QK.marks(username), marks);
@@ -233,9 +137,7 @@ export function SpFallbackForm({ kind }: { kind: "attendance" | "marks" }) {
     } catch (err) {
       const msg = errorMessage(err);
       setCaptcha("");
-      // Keep the form on screen while the next captcha is fetched.
       await loadCaptcha({ silent: true });
-      // loadCaptcha clears the error, so restore the login failure last.
       setError(msg);
     } finally {
       setPhase("ready");

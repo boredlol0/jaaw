@@ -1,7 +1,11 @@
 import type { AttendanceRecord, MarkRecord } from "@/lib/api";
 import { attendanceMargin } from "@/components/dashboard/utils";
 import { loadSession, saveSession } from "@/lib/storage";
-import type { StoredDashData } from "@/lib/storage";
+import type { StoredAll, StoredDashData } from "@/lib/storage";
+
+type SectionsPatch = Partial<
+  Pick<StoredDashData, "attendance" | "marks"> & { cachedAt: number }
+>;
 
 export type UpdateKind = "attendance" | "marks";
 
@@ -109,9 +113,6 @@ function diffMarks(prev: MarkRecord[], next: MarkRecord[]): UpdateEntry[] {
 }
 
 function diffData(prev: StoredDashData, next: StoredDashData): UpdateEntry[] {
-  console.log("Diffing data");
-  console.log(prev.attendance);
-  console.log(next.attendance);
   return [
     ...diffAttendance(
       (prev.attendance as AttendanceRecord[]) ?? [],
@@ -124,23 +125,20 @@ function diffData(prev: StoredDashData, next: StoredDashData): UpdateEntry[] {
   ];
 }
 
-/**
- * Called whenever a full refresh delivers fresh data (launch + manual refresh).
- * - First run (feature just shipped): seeds the baseline silently.
- * - First call of a session: diffs fresh data against the stored baseline and
- *   surfaces the result in the updates modal.
- * - Later calls in the same session: only advance the baseline silently so
- *   already-visible changes are never re-reported.
- */
-export function processLaunchUpdates(fresh: StoredDashData): void {
-  if (typeof window === "undefined") return;
-  console.log("Processing launch updates");
-  const stored = loadSession();
-  if (!stored) return;
+/** An empty fetch must not wipe a populated baseline. */
+function nonEmptySection(next: unknown, stored: unknown): unknown[] {
+  const nextArr = Array.isArray(next) ? next : [];
+  if (nextArr.length > 0) return nextArr;
+  const storedArr = Array.isArray(stored) ? stored : [];
+  return storedArr.length > 0 ? storedArr : [];
+}
 
-  const prev = stored.dash;
-  if (!prev || !prev.updatesSeeded) {
-    saveSession({ ...stored, dash: { ...fresh, updatesSeeded: true } });
+/** Seed silently on first run; diff once per session; advance silently after. */
+function applySections(stored: StoredAll, patch: SectionsPatch): void {
+  const prev = stored.dash!;
+
+  if (!prev.updatesSeeded) {
+    saveSession({ ...stored, dash: { ...prev, ...patch, updatesSeeded: true } });
     current = [];
     resolved = true;
     emit();
@@ -148,10 +146,55 @@ export function processLaunchUpdates(fresh: StoredDashData): void {
   }
 
   if (!resolved) {
-    current = diffData(prev, fresh);
+    current = diffData(prev, { ...prev, ...patch });
     resolved = true;
   }
 
-  saveSession({ ...stored, dash: { ...fresh, updatesSeeded: true } });
+  saveSession({ ...stored, dash: { ...prev, ...patch } });
   emit();
+}
+
+/**
+ * Called whenever a full refresh delivers fresh data (launch + manual refresh).
+ */
+export function processLaunchUpdates(fresh: StoredDashData): void {
+  if (typeof window === "undefined") return;
+  const stored = loadSession();
+  if (!stored) return;
+
+  const prev = stored.dash;
+  if (!prev) {
+    saveSession({ ...stored, dash: { ...fresh, updatesSeeded: true } });
+    current = [];
+    resolved = true;
+    emit();
+    return;
+  }
+
+  applySections(
+    stored,
+    {
+      attendance: nonEmptySection(fresh.attendance, prev.attendance),
+      marks: nonEmptySection(fresh.marks, prev.marks),
+      cachedAt: fresh.cachedAt,
+    }
+  );
+}
+
+/** Diff + persist a partial attendance/marks delivery (SP fallback, section queries). */
+export function processSectionsUpdate(patch: SectionsPatch): void {
+  if (typeof window === "undefined") return;
+  const stored = loadSession();
+  if (!stored?.dash) return;
+
+  const prev = stored.dash;
+  const safePatch: SectionsPatch = { ...patch };
+  if ("attendance" in safePatch) {
+    safePatch.attendance = nonEmptySection(safePatch.attendance, prev.attendance);
+  }
+  if ("marks" in safePatch) {
+    safePatch.marks = nonEmptySection(safePatch.marks, prev.marks);
+  }
+
+  applySections(stored, safePatch);
 }

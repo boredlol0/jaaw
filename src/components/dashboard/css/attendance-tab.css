@@ -321,8 +321,6 @@
 .cx-att-row-name {
   font-family: "Unbounded", sans-serif;
   font-weight: 700;
-  /* Fluid: long course titles ("PROGRAMMING") must not collide with the margin
-     value on narrow screens, so the type scales down with the viewport. */
   font-size: clamp(14px, 0.45rem + 1.45vw, 21px);
   letter-spacing: -0.01em;
   margin-top: 9px;
